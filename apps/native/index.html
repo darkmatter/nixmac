@@ -5,9 +5,33 @@
     <link rel="icon" type="image/svg+xml" href="/icon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>nixmac</title>
+    <!--
+      Styles for the boot splash below. Same file <SplashScreen> imports, so the
+      two never drift; Vite bundles and fingerprints it like any other asset.
+    -->
+    <link rel="stylesheet" href="/src/components/widget/layout/splash.css" />
   </head>
   <body>
-    <div id="root"></div>
+    <div id="root">
+      <!--
+        Boot splash. The window is shown as soon as it is built, so without this
+        the user stares at an empty pane while the bundle loads and parses. It
+        is the same markup <SplashScreen> renders — icon.svg standing in for the
+        animated mascot, and a scanning bar in place of probe progress — so the
+        handover is seamless: React clears #root on its first commit, which
+        removes this, and the mark simply starts hopping.
+      -->
+      <div class="nixmac-splash" aria-busy="true">
+        <div class="nixmac-splash__mark"><img src="/icon.svg" alt="" /></div>
+        <div class="nixmac-splash__text">
+          <span class="nixmac-splash__name">nixmac</span>
+          <div class="nixmac-splash__track">
+            <div class="nixmac-splash__bar nixmac-splash__bar--indeterminate"></div>
+          </div>
+          <span class="nixmac-splash__stage">Starting up…</span>
+        </div>
+      </div>
+    </div>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>

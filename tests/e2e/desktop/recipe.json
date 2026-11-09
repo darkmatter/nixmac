@@ -1,0 +1,371 @@
+{
+  "id": "nixmac",
+  "build": {
+    "kind": "dmg",
+    "appBundle": "nixmac.app",
+    "bundleIdentifier": "com.darkmatter.nixmac"
+  },
+  "stateFiles": {
+    "preferences": "~/Library/Application Support/com.darkmatter.nixmac/global-preferences.json",
+    "onboarding": "~/Library/Application Support/com.darkmatter.nixmac/onboarding-state.json",
+    "evolve": "~/Library/Application Support/com.darkmatter.nixmac/evolve-state.json",
+    "build": "~/Library/Application Support/com.darkmatter.nixmac/build-state.json",
+    "legacy-settings": "~/Library/Application Support/com.darkmatter.nixmac/settings.json",
+    "query-cache": "~/Library/Application Support/com.darkmatter.nixmac/query-cache.json"
+  },
+  "scenarios": {
+    "launch": {
+      "description": "A verified release installs into /Applications and opens a native Nix Mac window.",
+      "steps": [
+        {
+          "kind": "execute",
+          "description": "Launch the installed application",
+          "command": "/usr/bin/open",
+          "args": [
+            "-a",
+            "{{app.path}}"
+          ]
+        },
+        {
+          "kind": "execute",
+          "description": "Wait for a native application window",
+          "command": "/usr/bin/osascript",
+          "args": [
+            "-e",
+            "tell application \"System Events\"\nrepeat 60 times\nif exists process \"nixmac\" then\ntell process \"nixmac\"\nif (count of windows) > 0 then return \"nixmac window ready\"\nend tell\nend if\ndelay 1\nend repeat\nerror \"nixmac did not open a window\"\nend tell"
+          ],
+          "timeoutMs": 90000,
+          "stdoutIncludes": "nixmac window ready"
+        },
+        {
+          "kind": "observe",
+          "description": "Wait for the rendered onboarding screen",
+          "name": "nixmac-window",
+          "app": "nixmac",
+          "includes": "Config Directory",
+          "timeoutMs": 30000
+        }
+      ]
+    },
+    "startup-recovery": {
+      "description": "Load the startup-recovery initial state, reconcile an interrupted onboarding completion, and show the missing-configuration repair view after hydration.",
+      "steps": [
+        {
+          "kind": "execute",
+          "description": "Verify the intended pre-launch recovery state",
+          "command": "/usr/bin/osascript",
+          "args": [
+            "-l",
+            "JavaScript",
+            "-e",
+            "ObjC.import('Foundation'); const stateDir = ObjC.unwrap($.NSHomeDirectory()) + '/Library/Application Support/com.darkmatter.nixmac/'; function readState(name) { return JSON.parse(ObjC.unwrap($.NSString.stringWithContentsOfFileEncodingError(stateDir + name, $.NSUTF8StringEncoding, null))); } const onboarding = readState('onboarding-state.json'); const preferences = readState('global-preferences.json'); if (onboarding.completedAt !== null || onboarding.lastBuildAt !== 1751967600 || preferences.configDir !== '/tmp/nixmac-desktop-missing-config') throw new Error('startup-recovery requires its initial-state fixture'); 'nixmac recovery seed verified';"
+          ],
+          "stdoutIncludes": "nixmac recovery seed verified"
+        },
+        {
+          "kind": "execute",
+          "description": "Require the seeded missing configuration to have no flake",
+          "command": "/bin/test",
+          "args": [
+            "!",
+            "-e",
+            "/tmp/nixmac-desktop-missing-config/flake.nix"
+          ]
+        },
+        {
+          "kind": "execute",
+          "description": "Launch Nix Mac with the seeded on-disk state",
+          "command": "/usr/bin/open",
+          "args": [
+            "-a",
+            "{{app.path}}"
+          ]
+        },
+        {
+          "kind": "observe",
+          "description": "Wait for the hydrated repair view",
+          "name": "startup-recovery-window",
+          "app": "nixmac",
+          "includes": "Configuration not found",
+          "timeoutMs": 60000
+        },
+        {
+          "kind": "observe",
+          "description": "Verify the repair view identifies the supplied configuration path",
+          "name": "startup-recovery-path",
+          "app": "nixmac",
+          "includes": "/tmp/nixmac-desktop-missing-config",
+          "timeoutMs": 10000
+        },
+        {
+          "kind": "execute",
+          "description": "Verify Nix Mac persisted the recovered completion timestamp",
+          "command": "/bin/sh",
+          "args": [
+            "-eu",
+            "-c",
+            "nixmac_state_dir=\"$HOME/Library/Application Support/com.darkmatter.nixmac\"\nnixmac_completed=$(/usr/bin/plutil -extract completedAt raw -o - \"$nixmac_state_dir/onboarding-state.json\")\n/bin/test \"$nixmac_completed\" = 1751967600\n/bin/cp \"$nixmac_state_dir/onboarding-state.json\" /tmp/nixmac-desktop-recovered-onboarding.json\n/bin/cp \"$nixmac_state_dir/global-preferences.json\" /tmp/nixmac-desktop-loaded-preferences.json\n/usr/bin/printf 'nixmac recovered completion: %s\\n' \"$nixmac_completed\""
+          ],
+          "stdoutIncludes": "nixmac recovered completion: 1751967600"
+        },
+        {
+          "kind": "artifact",
+          "description": "Retain the app-written recovery state",
+          "guestPath": "/tmp/nixmac-desktop-recovered-onboarding.json",
+          "name": "recovered-onboarding.json"
+        },
+        {
+          "kind": "artifact",
+          "description": "Retain the loaded preferences for reproduction",
+          "guestPath": "/tmp/nixmac-desktop-loaded-preferences.json",
+          "name": "loaded-preferences.json"
+        }
+      ]
+    },
+    "package-tools": {
+      "description": "Nix and Homebrew are usable from the prepared desktop, and Nix Mac opens alongside them.",
+      "steps": [
+        {
+          "kind": "execute",
+          "description": "Check Nix installation",
+          "command": "/nix/var/nix/profiles/default/bin/nix",
+          "args": [
+            "--version"
+          ],
+          "stdoutIncludes": "nix"
+        },
+        {
+          "kind": "execute",
+          "description": "Check Homebrew installation",
+          "command": "/opt/homebrew/bin/brew",
+          "args": [
+            "--version"
+          ],
+          "stdoutIncludes": "Homebrew"
+        },
+        {
+          "kind": "execute",
+          "description": "Launch Nix Mac",
+          "command": "/usr/bin/open",
+          "args": [
+            "-a",
+            "{{app.path}}"
+          ]
+        },
+        {
+          "kind": "observe",
+          "description": "Inspect the rendered onboarding screen on the configured desktop",
+          "name": "package-tools-window",
+          "app": "nixmac",
+          "includes": "Config Directory",
+          "timeoutMs": 30000
+        }
+      ]
+    },
+    "create-configuration": {
+      "description": "Create a configuration through native controls, verify its literal host and destination in the app-written flake and Git repository, then confirm they survive relaunch.",
+      "steps": [
+        {
+          "kind": "execute",
+          "description": "Require the fresh onboarding JSON fixture",
+          "command": "/usr/bin/osascript",
+          "args": [
+            "-l",
+            "JavaScript",
+            "-e",
+            "ObjC.import('Foundation'); const root=ObjC.unwrap($.NSHomeDirectory())+'/Library/Application Support/com.darkmatter.nixmac/'; function read(name){return JSON.parse(ObjC.unwrap($.NSString.stringWithContentsOfFileEncodingError(root+name,$.NSUTF8StringEncoding,null)));} const preferences=read('global-preferences.json'); const onboarding=read('onboarding-state.json'); if(preferences.configDir!==null || preferences.repoRoot!==null || onboarding.completedAt!==null || onboarding.lastBuildAt!==null) throw new Error('create-configuration requires fresh-onboarding.initial-state.json'); 'nixmac fresh configuration seed verified';"
+          ],
+          "stdoutIncludes": "nixmac fresh configuration seed verified"
+        },
+        {
+          "kind": "execute",
+          "description": "Require a new destination in the disposable guest",
+          "command": "/bin/test",
+          "args": [
+            "!",
+            "-e",
+            "/Users/admin/nixmac-desktop-config"
+          ]
+        },
+        {
+          "kind": "execute",
+          "description": "Launch the verified application",
+          "command": "/usr/bin/open",
+          "args": [
+            "-a",
+            "{{app.path}}"
+          ]
+        },
+        {
+          "kind": "observe",
+          "name": "configuration-onboarding",
+          "app": "nixmac",
+          "includes": "Start from scratch",
+          "timeoutMs": 60000
+        },
+        {
+          "kind": "action",
+          "action": {
+            "kind": "clickElement",
+            "target": {
+              "app": "com.darkmatter.nixmac",
+              "role": "AXButton",
+              "label": "First time here\nStart from scratch New to nix-darwin? We'll generate a clean starter configuration tailored to this Mac."
+            },
+            "timeoutMs": 60000
+          }
+        },
+        {
+          "kind": "observe",
+          "name": "configuration-form",
+          "app": "nixmac",
+          "includes": "Where to save it",
+          "timeoutMs": 60000
+        },
+        {
+          "kind": "action",
+          "action": {
+            "kind": "scrollElement",
+            "target": {
+              "app": "com.darkmatter.nixmac",
+              "role": "AXWebArea",
+              "label": "nixmac"
+            },
+            "timeoutMs": 60000,
+            "direction": "down",
+            "amount": 12
+          }
+        },
+        {
+          "kind": "action",
+          "action": {
+            "kind": "fillElement",
+            "target": {
+              "app": "com.darkmatter.nixmac",
+              "role": "AXTextField",
+              "label": "Name this Mac"
+            },
+            "timeoutMs": 60000,
+            "text": "desktop-test-mac",
+            "delivery": "foregroundKeyboard"
+          }
+        },
+        {
+          "kind": "action",
+          "action": {
+            "kind": "fillElement",
+            "target": {
+              "app": "com.darkmatter.nixmac",
+              "role": "AXTextField",
+              "label": "Where to save it"
+            },
+            "timeoutMs": 60000,
+            "text": "/Users/admin/nixmac-desktop-config",
+            "delivery": "foregroundKeyboard"
+          }
+        },
+        {
+          "kind": "observe",
+          "name": "configuration-filled",
+          "app": "nixmac",
+          "includes": "/Users/admin/nixmac-desktop-config",
+          "timeoutMs": 60000
+        },
+        {
+          "kind": "action",
+          "action": {
+            "kind": "clickElement",
+            "target": {
+              "app": "com.darkmatter.nixmac",
+              "role": "AXButton",
+              "label": "Create my configuration"
+            },
+            "timeoutMs": 60000
+          }
+        },
+        {
+          "kind": "observe",
+          "name": "configuration-created",
+          "app": "nixmac",
+          "includes": "Scan this Mac",
+          "timeoutMs": 60000
+        },
+        {
+          "kind": "execute",
+          "description": "Verify the literal host, saved destination, committed flake and Git repository",
+          "command": "/bin/bash",
+          "args": [
+            "-c",
+            "set -eu\nnixmac_config=/Users/admin/nixmac-desktop-config\nnixmac_state=\"$HOME/Library/Application Support/com.darkmatter.nixmac/global-preferences.json\"\ntest \"$(/usr/bin/plutil -extract configDir raw -o - \"$nixmac_state\")\" = \"$nixmac_config\"\ntest \"$(/usr/bin/plutil -extract repoRoot raw -o - \"$nixmac_state\")\" = \"$nixmac_config\"\ntest \"$(/usr/bin/plutil -extract hostAttr raw -o - \"$nixmac_state\")\" = desktop-test-mac\n/usr/bin/grep -F 'darwinConfigurations.\"desktop-test-mac\"' \"$nixmac_config/flake.nix\"\n/usr/bin/grep -F 'networking.hostName = \"desktop-test-mac\"' \"$nixmac_config/flake.nix\"\ntest \"$(/usr/bin/git -C \"$nixmac_config\" rev-parse --is-inside-work-tree)\" = true\n/usr/bin/git -C \"$nixmac_config\" ls-files --error-unmatch flake.nix\n/usr/bin/git -C \"$nixmac_config\" show HEAD:flake.nix > /tmp/nixmac-desktop-committed-flake.nix\n/usr/bin/cmp /tmp/nixmac-desktop-committed-flake.nix \"$nixmac_config/flake.nix\"\n/usr/bin/git -C \"$nixmac_config\" rev-parse HEAD > /tmp/nixmac-desktop-created-commit.txt\n/bin/cp \"$nixmac_config/flake.nix\" /tmp/nixmac-desktop-created-flake.nix\n/bin/cp \"$nixmac_state\" /tmp/nixmac-desktop-created-preferences.json\n/usr/bin/printf 'nixmac configuration and Git verified\\n'"
+          ],
+          "stdoutIncludes": "nixmac configuration and Git verified"
+        },
+        {
+          "kind": "execute",
+          "description": "Quit the tested app cleanly",
+          "command": "/usr/bin/osascript",
+          "args": [
+            "-e",
+            "tell application id \"com.darkmatter.nixmac\" to quit"
+          ]
+        },
+        {
+          "kind": "execute",
+          "description": "Require process exit before restarting",
+          "command": "/bin/bash",
+          "args": [
+            "-c",
+            "for attempt in $(/usr/bin/seq 1 20); do if ! /usr/bin/pgrep -x nixmac >/dev/null; then exit 0; fi; /bin/sleep 0.5; done; exit 1"
+          ],
+          "timeoutMs": 15000
+        },
+        {
+          "kind": "execute",
+          "description": "Relaunch the installed application",
+          "command": "/usr/bin/open",
+          "args": [
+            "-a",
+            "{{app.path}}"
+          ]
+        },
+        {
+          "kind": "observe",
+          "name": "configuration-relaunched",
+          "app": "nixmac",
+          "includes": "Scan this Mac",
+          "timeoutMs": 60000
+        },
+        {
+          "kind": "execute",
+          "description": "Verify app hydration preserved preferences and the created Git revision",
+          "command": "/bin/bash",
+          "args": [
+            "-c",
+            "set -eu\nnixmac_config=/Users/admin/nixmac-desktop-config\nnixmac_state=\"$HOME/Library/Application Support/com.darkmatter.nixmac/global-preferences.json\"\ntest \"$(/usr/bin/plutil -extract configDir raw -o - \"$nixmac_state\")\" = \"$nixmac_config\"\ntest \"$(/usr/bin/plutil -extract hostAttr raw -o - \"$nixmac_state\")\" = desktop-test-mac\ntest \"$(/usr/bin/git -C \"$nixmac_config\" rev-parse HEAD)\" = \"$(/bin/cat /tmp/nixmac-desktop-created-commit.txt)\"\n/usr/bin/cmp /tmp/nixmac-desktop-created-flake.nix \"$nixmac_config/flake.nix\"\n/bin/cp \"$nixmac_state\" /tmp/nixmac-desktop-relaunched-preferences.json\n/usr/bin/printf 'nixmac configuration survived relaunch\\n'"
+          ],
+          "stdoutIncludes": "nixmac configuration survived relaunch"
+        },
+        {
+          "kind": "artifact",
+          "guestPath": "/tmp/nixmac-desktop-created-flake.nix",
+          "name": "created-flake.nix"
+        },
+        {
+          "kind": "artifact",
+          "guestPath": "/tmp/nixmac-desktop-created-preferences.json",
+          "name": "created-preferences.json"
+        },
+        {
+          "kind": "artifact",
+          "guestPath": "/tmp/nixmac-desktop-created-commit.txt",
+          "name": "created-commit.txt"
+        },
+        {
+          "kind": "artifact",
+          "guestPath": "/tmp/nixmac-desktop-relaunched-preferences.json",
+          "name": "relaunched-preferences.json"
+        }
+      ]
+    }
+  }
+}

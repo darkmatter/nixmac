@@ -1,0 +1,15 @@
+[package]
+name = "activation-runner"
+version = "0.1.0"
+edition = "2024"
+publish = false
+
+[lints]
+workspace = true
+
+[dependencies]
+# no_std on purpose: this crate is the post-fork child path of the privileged
+# helper, where allocation is forbidden (see lib.rs). Depending on libc alone,
+# with std unavailable, turns "no allocation after fork" from a review rule
+# into a compile error.
+libc = { version = "0.2", default-features = false }

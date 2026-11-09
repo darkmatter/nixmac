@@ -14,10 +14,14 @@ pub struct AgeKeyInfo {
 }
 
 /// Ensure an age private key exists for SOPS and return its public key.
+///
+/// An explicit `SOPS_AGE_KEY_FILE` is treated only as a reference to an existing
+/// absolute path. Key generation is allowed only at the standard per-user
+/// fallback path, never at an environment-provided path.
 /// NOTE that this depends on age-keygen being installed and available in PATH.
 pub fn ensure_age_key() -> Result<AgeKeyInfo> {
     let home = dirs::home_dir().ok_or_else(|| anyhow!("Unable to determine home directory"))?;
-    let key_path = resolve_age_key_path(&home);
+    let key_path = resolve_age_key_path(&home)?;
 
     if !key_path.exists() {
         if let Some(parent) = key_path.parent() {
@@ -52,29 +56,51 @@ pub fn ensure_age_key() -> Result<AgeKeyInfo> {
     })
 }
 
+fn configured_age_key_path() -> Result<Option<PathBuf>> {
+    let Some(raw_path) =
+        std::env::var_os(SOPS_AGE_KEY_FILE_ENV_VAR).filter(|value| !value.is_empty())
+    else {
+        return Ok(None);
+    };
+    let key_path = PathBuf::from(raw_path);
+
+    if key_path
+        .to_str()
+        .is_some_and(|value| value.starts_with("age1"))
+    {
+        return Err(anyhow!(
+            "{SOPS_AGE_KEY_FILE_ENV_VAR} contains an age public recipient; expected an absolute path to an existing private identity file. Public recipients do not belong in this variable"
+        ));
+    }
+    if !key_path.is_absolute() {
+        return Err(anyhow!(
+            "{SOPS_AGE_KEY_FILE_ENV_VAR} must be an absolute path to an existing private identity file; refusing to resolve it relative to the process working directory"
+        ));
+    }
+    if !key_path.is_file() {
+        return Err(anyhow!(
+            "{SOPS_AGE_KEY_FILE_ENV_VAR} points to {}, which is not an existing file; refusing to create a private key at an environment-provided path",
+            key_path.display()
+        ));
+    }
+
+    Ok(Some(key_path))
+}
+
 fn find_existing_age_key_path(home: &Path) -> Option<PathBuf> {
-    let env_key_path = std::env::var_os(SOPS_AGE_KEY_FILE_ENV_VAR)
-        .filter(|value| !value.is_empty())
-        .map(PathBuf::from);
     let macos_key_path = home.join(MACOS_SOPS_AGE_KEYS_RELATIVE_PATH);
     let home_key_path = home.join(SOPS_AGE_KEYS_RELATIVE_PATH);
 
-    [env_key_path, Some(macos_key_path), Some(home_key_path)]
+    [macos_key_path, home_key_path]
         .into_iter()
-        .flatten()
         .find(|path| path.is_file())
 }
 
-fn resolve_age_key_path(home: &Path) -> PathBuf {
-    // If the user sets to a file that doesn't exist yet, we will
-    // attempt to create it at that path, so we should return that path instead of falling back to existing ones.
-    if let Some(path) = std::env::var_os(SOPS_AGE_KEY_FILE_ENV_VAR)
-        .filter(|value| !value.is_empty())
-        .map(PathBuf::from)
-    {
-        return path;
+fn resolve_age_key_path(home: &Path) -> Result<PathBuf> {
+    if let Some(path) = configured_age_key_path()? {
+        return Ok(path);
     }
-    find_existing_age_key_path(home).unwrap_or_else(|| home.join(SOPS_AGE_KEYS_RELATIVE_PATH))
+    Ok(find_existing_age_key_path(home).unwrap_or_else(|| home.join(SOPS_AGE_KEYS_RELATIVE_PATH)))
 }
 
 fn derive_public_key(key_path: &Path) -> Result<String> {
@@ -108,7 +134,7 @@ fn derive_public_key(key_path: &Path) -> Result<String> {
 mod tests {
     use super::{
         MACOS_SOPS_AGE_KEYS_RELATIVE_PATH, SOPS_AGE_KEY_FILE_ENV_VAR, SOPS_AGE_KEYS_RELATIVE_PATH,
-        find_existing_age_key_path, resolve_age_key_path,
+        configured_age_key_path, find_existing_age_key_path, resolve_age_key_path,
     };
     use std::ffi::OsString;
     use std::path::Path;
@@ -161,40 +187,58 @@ mod tests {
     }
 
     #[test]
-    fn find_existing_prefers_env_var_path() {
+    fn configured_path_accepts_an_existing_absolute_file() {
         let _guard = env_lock().lock().expect("lock env var mutations");
         let temp = tempfile::tempdir().expect("create tempdir");
-        let home = temp.path().join("home");
 
         let env_key = temp.path().join("external-keys.txt");
-        let mac_key = home.join(MACOS_SOPS_AGE_KEYS_RELATIVE_PATH);
-        let home_key = home.join(SOPS_AGE_KEYS_RELATIVE_PATH);
         write_file(&env_key);
-        write_file(&mac_key);
-        write_file(&home_key);
 
         let _env = EnvVarGuard::set(Some(&env_key));
-        let resolved = find_existing_age_key_path(&home).expect("resolve existing key path");
+        let resolved = configured_age_key_path()
+            .expect("validate configured path")
+            .expect("configured path");
 
         assert_eq!(resolved, env_key);
     }
 
     #[test]
-    fn find_existing_falls_back_to_macos_path_when_env_missing() {
+    fn configured_path_rejects_a_missing_file_instead_of_creating_it() {
         let _guard = env_lock().lock().expect("lock env var mutations");
         let temp = tempfile::tempdir().expect("create tempdir");
-        let home = temp.path().join("home");
 
         let missing_env = temp.path().join("missing-keys.txt");
-        let mac_key = home.join(MACOS_SOPS_AGE_KEYS_RELATIVE_PATH);
-        let home_key = home.join(SOPS_AGE_KEYS_RELATIVE_PATH);
-        write_file(&mac_key);
-        write_file(&home_key);
-
         let _env = EnvVarGuard::set(Some(&missing_env));
-        let resolved = find_existing_age_key_path(&home).expect("resolve existing key path");
+        let error = configured_age_key_path().expect_err("missing path must be rejected");
 
-        assert_eq!(resolved, mac_key);
+        assert!(
+            error
+                .to_string()
+                .contains("refusing to create a private key")
+        );
+        assert!(!missing_env.exists());
+    }
+
+    #[test]
+    fn configured_path_rejects_a_public_recipient() {
+        let _guard = env_lock().lock().expect("lock env var mutations");
+        let _env = EnvVarGuard::set_raw(Some(
+            "age16wuzuxnkcgfuxzvzgk5e5a5f6hhs386adjewyv54m9esr4yj6uuslpn6tp",
+        ));
+
+        let error = configured_age_key_path().expect_err("recipient must be rejected");
+
+        assert!(error.to_string().contains("age public recipient"));
+    }
+
+    #[test]
+    fn configured_path_rejects_other_relative_paths() {
+        let _guard = env_lock().lock().expect("lock env var mutations");
+        let _env = EnvVarGuard::set_raw(Some("keys.txt"));
+
+        let error = configured_age_key_path().expect_err("relative path must be rejected");
+
+        assert!(error.to_string().contains("must be an absolute path"));
     }
 
     #[test]
@@ -234,13 +278,13 @@ mod tests {
         let home = temp.path().join("home");
 
         let _env = EnvVarGuard::set(None);
-        let resolved = resolve_age_key_path(&home);
+        let resolved = resolve_age_key_path(&home).expect("resolve default key path");
 
         assert_eq!(resolved, home.join(SOPS_AGE_KEYS_RELATIVE_PATH));
     }
 
     #[test]
-    fn resolve_age_key_path_returns_env_var_path_even_when_file_does_not_exist() {
+    fn resolve_age_key_path_rejects_env_var_path_when_file_does_not_exist() {
         let _guard = env_lock().lock().expect("lock env var mutations");
         let temp = tempfile::tempdir().expect("create tempdir");
         let home = temp.path().join("home");
@@ -250,9 +294,14 @@ mod tests {
         assert!(!nonexistent.exists(), "precondition: file must not exist");
 
         let _env = EnvVarGuard::set(Some(&nonexistent));
-        let resolved = resolve_age_key_path(&home);
+        let error = resolve_age_key_path(&home).expect_err("missing configured path");
 
-        assert_eq!(resolved, nonexistent);
+        assert!(
+            error
+                .to_string()
+                .contains("refusing to create a private key")
+        );
+        assert!(!nonexistent.exists());
     }
 
     #[test]
@@ -265,7 +314,7 @@ mod tests {
         write_file(&env_key);
 
         let _env = EnvVarGuard::set(Some(&env_key));
-        let resolved = resolve_age_key_path(&home);
+        let resolved = resolve_age_key_path(&home).expect("resolve configured key path");
 
         assert_eq!(resolved, env_key);
     }
@@ -281,7 +330,7 @@ mod tests {
         write_file(&mac_key);
 
         let _env = EnvVarGuard::set_raw(Some(""));
-        let resolved = resolve_age_key_path(&home);
+        let resolved = resolve_age_key_path(&home).expect("resolve fallback key path");
 
         assert_eq!(resolved, mac_key);
     }

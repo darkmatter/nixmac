@@ -152,7 +152,6 @@ function makePreviewItem(target: HistoryItem): HistoryItem {
     isUndone: false,
     isOrphanedRestore: false,
     fileCount: target.fileCount,
-    commit: null,
     changeMap: target.changeMap,
     unsummarizedHashes: target.unsummarizedHashes,
     rawChanges: target.rawChanges,

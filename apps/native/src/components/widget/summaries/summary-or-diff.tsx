@@ -55,7 +55,7 @@ export function SummaryOrDiff({
     setIncludedFiles((prev) => {
       const next: Record<string, boolean> = {};
       for (const file of files) {
-        next[file.filename] = prev[file.filename] ?? true;
+        next[file.hash] = prev[file.hash] ?? true;
       }
       return next;
     });
@@ -108,11 +108,11 @@ export function SummaryOrDiff({
             <ul className="divide-y divide-border/50">
               {files.map((file, index) => (
                 <DriftFileRow
-                  key={`${file.oldFilename ?? ""}\0${file.filename}`}
+                  key={file.hash}
                   file={file}
-                  included={includedFiles[file.filename] ?? true}
+                  included={includedFiles[file.hash] ?? true}
                   onIncludedChange={(included) =>
-                    setIncludedFiles((prev) => ({ ...prev, [file.filename]: included }))
+                    setIncludedFiles((prev) => ({ ...prev, [file.hash]: included }))
                   }
                   showActions={false}
                   defaultOpen={index === 0}

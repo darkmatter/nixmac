@@ -22,6 +22,9 @@ required-features = ["codegen"]
 [build-dependencies]
 tauri-build = { version = "2", features = [] }
 serde_json = "1"
+# Writes the build-ID-stamped Info.plist the bundler merges; the crate reads the
+# same key back out of an installed bundle (`build_id.rs`).
+plist = "1.10.0"
 
 [dependencies]
 tauri = { version = "2", features = [
@@ -57,7 +60,6 @@ tempfile = "3.23.0"
 async-openai = "0.30.1"
 futures-util = "0.3"
 async-trait = "0.1"
-glob = "0.3"
 chrono = { version = "0.4", features = ["serde"] }
 uuid = { version = "1", features = ["v4"] }
 once_cell = "1.21.3"
@@ -68,9 +70,14 @@ http = "1"
 diesel = { version = "2", features = ["sqlite", "r2d2"] }
 diesel_migrations = "2"
 r2d2 = "0.8"
-# Pin libsqlite3-sys with bundled so Diesel uses a self-contained sqlite
-# rather than a system one — rusqlite previously carried this flag.
-libsqlite3-sys = { version = "0.28", features = ["bundled"] }
+# Pin libsqlite3-sys with bundled so diesel and sqlx use a self-contained
+# sqlite rather than a system one.
+#
+# 0.30 specifically: `links = "sqlite3"` allows one version in the graph.
+# `sqlx-sqlite` 0.8.1+ needs ^0.30.1 and diesel accepts >=0.17.2, <0.39, so
+# 0.30 is the only overlap. 0.28 leaves sqlx on 0.8.0 (RUSTSEC-2024-0363);
+# 0.31+ does not resolve at all.
+libsqlite3-sys = { version = "0.30", features = ["bundled"] }
 tauri-plugin-upload = "2.0.0"
 tauri-plugin-macos-permissions = "2.3.0"
 tracing = "0.1"
@@ -103,10 +110,11 @@ opentelemetry-otlp = { version = "0.29", features = [
 opentelemetry-appender-tracing = "0.29"
 tracing-opentelemetry = "0.30"
 configurable = { path = "configurable" }
+activation-runner = { path = "activation-runner" }
 hmac = "0.12"
 zip = { version = "2", default-features = false, features = ["deflate"] }
 walkdir = "2.5.0"
-plist = "1.9.0"
+plist = "1.10.0"
 whoami = "2.1.2"
 libc = "0.2"
 orpc = "1.1.0"
@@ -116,6 +124,15 @@ tauri-plugin-opener = "2"
 tauri-plugin-deep-link = "2"
 tauri-plugin-os = "2"
 tauri-plugin-macos-passkey = "0.1.0"
+ignore = "0.4.31"
+
+# Vendored Oh My Pi extracts (not wired into evolve tools yet).
+# See crates/vendor/oh-my-pi/VENDOR.md
+pi-walker = { path = "../../../crates/vendor/oh-my-pi/pi-walker" }
+pi-uutils-ctx = { path = "../../../crates/vendor/oh-my-pi/pi-uutils-ctx" }
+pi_uu_grep = { path = "../../../crates/vendor/oh-my-pi/pi-uu-grep" }
+pi-iso = { path = "../../../crates/vendor/oh-my-pi/pi-iso" }
+pi-ast = { path = "../../../crates/vendor/oh-my-pi/pi-ast" }
 
 [dependencies.tauri-plugin-sql]
 features = ["sqlite"] # or "postgres", or "mysql"
@@ -126,9 +143,65 @@ tauri-plugin-updater = "2.0.0"
 url = "2"
 
 [target.'cfg(target_os = "macos")'.dependencies]
-cocoa = "0.26"
-objc = "0.2"
 window-vibrancy = "0.6"
+core-foundation = "0.10"
+security-framework = "3"
+nix = { version = "0.31", features = ["socket", "user"] }
+# Named `errSecCS*` / `errSecCertificate*` / `CSSMERR_TP_*` status values,
+# generated from the Security.framework headers, for the privileged-helper peer
+# auth status table. A name that does not exist fails the build, where a
+# hand-transcribed number was silently wrong — and a wrong number there can
+# classify a peer nobody could judge as invalid, which authorizes removal.
+#
+# macOS-gated because it cannot build off Apple: 0.3.2 declares `mod generated`
+# with no cfg and an unconditional `#[link(name = "Security", kind =
+# "framework")]`, which rustc rejects with E0455 on other targets. The status
+# table it feeds is therefore macOS-only too, and so are that table's tests —
+# they run on the macOS runner, which executes `cargo test` alongside clippy.
+objc2-security = { version = "0.3.2", default-features = false, features = [
+  "CSCommon",
+  "SecBase",
+  "cssmerr",
+] }
+# SMAppService bindings for the privileged-helper registration
+# (`privileged_helper/service.rs`). Generated from the SDK headers, so the
+# asynchronous `unregisterWithCompletionHandler:` and the typed status enum are
+# both reachable — the two things the published wrapper crates
+# (`smappservice-rs`, `servicemanagement-rs`) do not offer.
+objc2-service-management = { version = "0.3.2", default-features = false, features = [
+  "std",
+  "SMAppService",
+  "SMErrors",
+  "block2",
+  "objc2",
+  "objc2-foundation",
+] }
+# Already in the tree through the objc2 framework crates; declared directly
+# because the SMAppService adapter constructs NSString/NSError values, retains
+# the unregister completion block, and hops onto the main queue itself.
+objc2 = "0.6"
+objc2-foundation = { version = "0.3.2", default-features = false, features = [
+  "std",
+  "NSDictionary",
+  "NSError",
+  "NSString",
+  "NSThread",
+] }
+block2 = "0.6"
+dispatch2 = "0.3"
+# Typed `NSWindow` bindings for the floating-panel setup in `peek.rs` and the
+# `NIXMAC_E2E_OPAQUE_WINDOW` diagnostic in `main.rs`. Already in the tree
+# through Tauri; declared directly with the exact features this code uses, so
+# the build does not depend on Tauri's own feature selection.
+objc2-app-kit = { version = "0.3.2", default-features = false, features = [
+  "std",
+  "NSResponder",
+  "NSWindow",
+  "objc2-core-foundation",
+] }
+
+[target.'cfg(unix)'.dependencies]
+nix = { version = "0.31", features = ["user"] }
 
 [dependencies.tera]
 version = "1"

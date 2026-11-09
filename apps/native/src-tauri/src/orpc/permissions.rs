@@ -25,8 +25,8 @@ async fn refresh(ctx: OrpcCtx, _input: ()) -> Result<(), ORPCError> {
         .map_err(|e| internal_err("permissions.refresh", e))
 }
 
-async fn request(_ctx: OrpcCtx, input: RequestInput) -> Result<Permission, ORPCError> {
-    cmd::permissions_request(input.permission_id)
+async fn request(ctx: OrpcCtx, input: RequestInput) -> Result<Permission, ORPCError> {
+    cmd::permissions_request(ctx.app, input.permission_id)
         .await
         .map_err(|e| internal_err("permissions.request", e))
 }

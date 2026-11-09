@@ -1,5 +1,6 @@
 import { readFileSync } from "node:fs";
 import path from "node:path";
+import { EnvProfileSchema, NIXMAC_ENVS, type NixmacEnv } from "./src/lib/env-profile-schema";
 
 type NixmacProfileName = "development" | "release" | "e2e";
 
@@ -8,16 +9,28 @@ function readProfileJson(nativeAppDir: string, name: NixmacProfileName): Record<
   return JSON.parse(raw) as Record<string, unknown>;
 }
 
-/** Profile file selection — keep in sync with `apps/native/src-tauri/build.rs`. */
-function resolveNixmacProfile(): NixmacProfileName {
-  switch (process.env.NIXMAC_ENV ?? "development") {
-    case "prod":
+/**
+ * Profile file selection — keep in sync with `apps/native/src-tauri/build.rs`.
+ *
+ * Unset means development. Any other value is a mistake in the build command,
+ * not a request for the default.
+ *
+ * Returns the selector as well as the file, so the caller can check that the
+ * file it picked names the same environment.
+ */
+function resolveNixmacProfile(): { selector: NixmacEnv; file: NixmacProfileName } {
+  const selector = process.env.NIXMAC_ENV ?? "development";
+  switch (selector) {
+    case "development":
+      return { selector, file: "development" };
     case "production":
-      return "release";
+      return { selector, file: "release" };
     case "e2e":
-      return "e2e";
+      return { selector, file: "e2e" };
     default:
-      return "development";
+      throw new Error(
+        `NIXMAC_ENV must be unset or one of ${NIXMAC_ENVS.join(", ")}; got ${JSON.stringify(selector)}`,
+      );
   }
 }
 
@@ -65,6 +78,15 @@ const OVERRIDABLE_PREFIXES = [
   "NIX_INSTALLED_",
 ] as const;
 
+/**
+ * Keys process env must never overwrite.
+ *
+ * `NIXMAC_ENV` picks which profile file to read, and each profile names the same
+ * environment in its own `NIXMAC_ENV` key. A selector is not a setting: letting
+ * process env write that key too would let it drift from the file it selected.
+ */
+const NON_OVERRIDABLE_KEYS = new Set(["$schema", "NIXMAC_ENV"]);
+
 function isOverridableKey(key: string): boolean {
   return OVERRIDABLE_PREFIXES.some((prefix) => key.startsWith(prefix));
 }
@@ -80,7 +102,8 @@ function mergeProfileWithProcessEnv(
   const merged: Record<string, unknown> = { ...base };
 
   for (const [key, envValue] of Object.entries(process.env)) {
-    if (key === "$schema" || envValue === undefined || envValue.trim() === "") continue;
+    if (NON_OVERRIDABLE_KEYS.has(key) || envValue === undefined || envValue.trim() === "")
+      continue;
     if (!(key in merged) && !isOverridableKey(key)) continue;
     merged[key] = coerceEnvOverride(merged[key], envValue);
   }
@@ -89,23 +112,37 @@ function mergeProfileWithProcessEnv(
   return merged;
 }
 
-function loadCommittedProfile(
+function resolveMergedProfile(
   nativeAppDir: string,
-  name: NixmacProfileName,
+  file: NixmacProfileName,
 ): Record<string, unknown> {
-  return readProfileJson(nativeAppDir, name);
+  return mergeProfileWithProcessEnv(readProfileJson(nativeAppDir, file), nativeAppDir);
 }
 
-function resolveMergedProfile(nativeAppDir: string): Record<string, unknown> {
-  const base = loadCommittedProfile(nativeAppDir, resolveNixmacProfile());
-  return mergeProfileWithProcessEnv(base, nativeAppDir);
-}
-
+/**
+ * Vite `define` entries that bake the selected profile into the bundle.
+ *
+ * A define is raw text substitution, so this emits a JavaScript object literal
+ * that `src/lib/env.ts` consumes directly: no string to parse, and therefore no
+ * parse for a bad profile to fall back from. Validating and coercing here means
+ * an invalid profile fails the build instead of the app.
+ *
+ * The schema only checks that `NIXMAC_ENV` is one of the three names, so the
+ * file could name an environment other than the one the selector asked for.
+ * `mayBypassUserGates` in `src/lib/env.ts` reads that name to decide whether the
+ * skip-permissions and nix-installed bypasses are allowed at all, so a profile
+ * mislabelled `development` would switch that lockout off in a release build.
+ * Checking the two agree is what keeps the name honest.
+ */
 export function nixmacBuildDefines(nativeAppDir: string): Record<string, string> {
-  const profileName = resolveNixmacProfile();
-  const merged = resolveMergedProfile(nativeAppDir);
+  const { selector, file } = resolveNixmacProfile();
+  const profile = EnvProfileSchema.parse(resolveMergedProfile(nativeAppDir, file));
+  if (profile.NIXMAC_ENV !== selector) {
+    throw new Error(
+      `env.${file}.json declares NIXMAC_ENV ${JSON.stringify(profile.NIXMAC_ENV)}, but this build selected ${JSON.stringify(selector)}; the two must name the same environment`,
+    );
+  }
   return {
-    __NIXMAC_PROFILE__: JSON.stringify(profileName),
-    __NIXMAC_PROFILE_JSON__: JSON.stringify(merged),
+    __NIXMAC_PROFILE_DATA__: JSON.stringify(profile),
   };
 }

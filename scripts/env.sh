@@ -39,13 +39,13 @@ select_env() {
 No environment selected, which \
 environment do you want to use?"
   if [ -z "$SELECTED_ENV" ]; then
-    SELECTED_ENV="$(gum choose "prod" "dev" --header="$CHOOSE_MSG")"
+    SELECTED_ENV="$(gum choose "production" "development" --header="$CHOOSE_MSG")"
   fi
   export NIXMAC_ENV="$SELECTED_ENV"
 }
 
 get_secrets_file() {
-  if [ "$NIXMAC_ENV" == "prod" ]; then
+  if [ "$NIXMAC_ENV" == "production" ]; then
     echo "ops/secrets/secrets.yaml"
   else
     echo "ops/secrets/secrets.dev.yaml"

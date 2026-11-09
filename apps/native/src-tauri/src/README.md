@@ -51,9 +51,10 @@ Each file (apply, cli_tool, config, debug, editor, evolve, evolve_state, feedbac
 
 - `schema.rs` — Runs migrations
 - `pool.rs`, `tables.rs` — Diesel r2d2 connection pool and `table!` declarations
-- `commits.rs`, `evolutions.rs` — CRUD for their respective tables
-- `changesets.rs` — Shared insert helpers for changeset tables
-- `store_whole_diff_changeset.rs`, `store_bare_changeset.rs` — Persist summarization pipeline results
+- `keys.rs` — Content-addressing helpers (`snapshot_key` / `group_key` = sha256 of sorted change hashes)
+- `summaries.rs` — Store + lookup for content-addressed `patch_summaries` (singles) and `summary_groups`
+- `snapshots.rs` — Upsert/get for `snapshots` (caches the generated commit message; its `id` is the `changeset_id` plumbed through evolve/build)
+- `evolutions.rs` — CRUD for the thin `evolutions` table (`id`, `origin_branch`)
 - `restore_commits.rs` — Tracks restore-origin provenance
 
 **Called by:** history, summarize, evolve/lifecycle, managed_edits, state/watcher
@@ -147,7 +148,7 @@ grouping scheme).
 
 - `mod.rs` — Top-level `new_changeset` / `summarize_since` flow
 - `find_existing.rs` — Queries DB for existing summarized changesets
-- `group_existing.rs` — Builds SemanticChangeMap from found changesets
+- `find_existing.rs` — Content-addressed lookup: greedily selects non-overlapping `summary_groups` (`members ⊆ live hashes`), falls back to `patch_summaries` for uncovered hashes, loads the `snapshot`, and produces a `SemanticChangeMap`
 - `model_calls.rs` — AI API call for the whole-diff summary
 - `build_prompt.rs` — Constructs the whole-diff prompt
 - `token_budgets.rs` — Computes input/output token allocations

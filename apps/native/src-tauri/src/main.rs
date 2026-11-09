@@ -11,6 +11,10 @@
 // are declared by their parent `mod.rs` files so rust-analyzer resolves them via Cargo.
 mod ai;
 mod bootstrap;
+// Consumed by `build.rs` via include!; declared here so its resolution table
+// stays under `cargo test`.
+#[allow(dead_code)]
+mod build_id;
 mod cli;
 mod commands;
 mod db;
@@ -33,6 +37,7 @@ mod privileged_helper;
 mod rebuild;
 #[cfg(any(test, feature = "codegen"))]
 mod schema_gen;
+mod secrets;
 mod shared_types;
 mod sqlite_types;
 mod state;
@@ -226,6 +231,19 @@ const E2E_CAPTURE_DARK_BACKGROUND_SCRIPT: &str = r#"
 "#;
 
 fn main() {
+    // Root re-entry for the interactive activation fallback: `osascript ...
+    // with administrator privileges` re-executes this binary with this
+    // argument so the privileged step runs fixed Rust code instead of a
+    // generated shell script. Dispatched before anything else — the elevated
+    // process must never boot the GUI.
+    if std::env::args().nth(1).as_deref()
+        == Some(privileged_helper::root_activation::ROOT_ACTIVATE_ARG)
+    {
+        std::process::exit(privileged_helper::root_activation::run(
+            std::env::args().skip(2),
+        ));
+    }
+
     #[cfg(feature = "codegen")]
     if std::env::args().nth(1).as_deref() == Some("gen-schemas") {
         if let Err(error) = schema_gen::write_default_config_schemas() {
@@ -364,6 +382,7 @@ fn register_managed_state<R: tauri::Runtime>(app: &tauri::AppHandle<R>) -> anyho
     app.manage(state::permissions_state::load_observable(app));
     app.manage(state::nix_install_state::load_observable(app));
     app.manage(state::rebuild_status::load_observable(app));
+    app.manage(state::secrets_vault::load_observable(app));
     Ok(())
 }
 
@@ -487,17 +506,10 @@ fn run_gui_mode(
         std::sync::Mutex<Option<tracing_appender::non_blocking::WorkerGuard>>,
     >,
 ) {
-    // Prefer compile-time embedded vars (set by build.rs via `cargo:rustc-env`),
-    // fall back to runtime environment variables.
-    let nixmac_env = option_env!("NIXMAC_ENV")
-        .map(|s| s.to_string())
-        .or_else(|| std::env::var("NIXMAC_ENV").ok())
-        .unwrap_or_else(|| "prod".to_string());
-
-    let nixmac_version = option_env!("NIXMAC_VERSION")
-        .map(|s| s.to_string())
-        .or_else(|| std::env::var("NIXMAC_VERSION").ok())
-        .unwrap_or_else(|| "unknown".to_string());
+    // Both read through `crate::env`, which owns the precedence, so the log line
+    // below reports the same values telemetry does.
+    let nixmac_env = crate::env::nixmac_env();
+    let nixmac_version = crate::env::nixmac_version();
 
     let mut builder = tauri::Builder::default().plugin(tauri_plugin_http::init());
     let orpc_router = orpc::build_router();
@@ -709,6 +721,18 @@ fn run_gui_mode(
                 }
             });
 
+            // Reconcile the installed privileged helper with this build. This is
+            // the only actor in an upgrade: a Finder replacement and the
+            // updater's relaunch both converge here, on the new GUI's ordinary
+            // startup, and the old one prepares nothing.
+            //
+            // Off the main thread, and off the startup path: the run makes
+            // ServiceManagement calls *on* the main queue and awaits them, and it
+            // waits — legitimately, for as long as it takes — on an activation a
+            // previous build's helper is still running. It reports through the
+            // permission row; nothing here waits for it.
+            system::helper_permission::start_converging(handle);
+
             // Background initialize the nix-darwin docs index once at startup for fast option-shape lookup.
             let docs_handle = handle.clone();
             tauri::async_runtime::spawn_blocking(move || {
@@ -914,26 +938,23 @@ use window_vibrancy::{apply_vibrancy, NSVisualEffectMaterial, NSVisualEffectStat
 
             #[cfg(target_os = "macos")]
             if e2e_opaque_window {
-                use objc::msg_send;
-                use objc::runtime::Object;
-                use objc::sel;
-                use objc::sel_impl;
+                use objc2_app_kit::NSWindow;
 
                 match main_window.ns_window() {
-                    Ok(ns_window) => unsafe {
-                        let ns_window = ns_window as *mut Object;
-                        let is_opaque: bool = msg_send![ns_window, isOpaque];
-                        let alpha_value: f64 = msg_send![ns_window, alphaValue];
-                        let level: i64 = msg_send![ns_window, level];
-                        let has_shadow: bool = msg_send![ns_window, hasShadow];
+                    Ok(ns_window) => {
+                        // SAFETY: `ns_window()` hands back a
+                        // retained-then-autoreleased NSWindow, valid for this
+                        // scope, and `setup()` runs on the main thread, as
+                        // main-thread-only `NSWindow` requires.
+                        let ns_window: &NSWindow = unsafe { &*ns_window.cast() };
                         log::info!(
                             "NIXMAC_E2E_OPAQUE_WINDOW native window diagnostics: isOpaque={} alphaValue={:.3} level={} hasShadow={}",
-                            is_opaque,
-                            alpha_value,
-                            level,
-                            has_shadow
+                            ns_window.isOpaque(),
+                            ns_window.alphaValue(),
+                            ns_window.level(),
+                            ns_window.hasShadow()
                         );
-                    },
+                    }
                     Err(error) => {
                         log::warn!(
                             "NIXMAC_E2E_OPAQUE_WINDOW native window diagnostics unavailable: {}",

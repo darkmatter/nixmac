@@ -53,15 +53,19 @@ describe("deriveDriftFiles", () => {
     expect(byName("configuration.nix").stats).toEqual({ added: 2, removed: 1 });
   });
 
-  it("collapses multiple hunks of the same file into one row and sums stats", () => {
+  it("keeps multiple changes to the same file as separate rows", () => {
     const rows = deriveDriftFiles([
       change("configuration.nix", EDITED),
       change("configuration.nix", ADDED),
     ]);
 
-    expect(rows).toHaveLength(1);
-    expect(rows[0].hunkCount).toBe(2);
-    expect(rows[0].stats).toEqual({ added: 5, removed: 1 });
+    expect(rows).toHaveLength(2);
+    expect(rows.map((row) => row.filename)).toEqual(["configuration.nix", "configuration.nix"]);
+    expect(rows.map((row) => row.hunkCount)).toEqual([1, 1]);
+    expect(rows.map((row) => row.stats)).toEqual([
+      { added: 2, removed: 1 },
+      { added: 3, removed: 0 },
+    ]);
   });
 
   it("pairs an add + remove of the same basename into a single renamed row", () => {
@@ -81,14 +85,14 @@ describe("deriveDriftFiles", () => {
     expect(rows[0].diffText).toBe(EDITED);
   });
 
-  it("concatenates every hunk of a file into the row's diff text", () => {
+  it("keeps each change's diff text with its own row", () => {
     const rows = deriveDriftFiles([
       change("configuration.nix", EDITED),
       change("configuration.nix", ADDED),
     ]);
 
-    expect(rows).toHaveLength(1);
-    expect(rows[0].diffText).toBe(`${EDITED}\n${ADDED}`);
+    expect(rows).toHaveLength(2);
+    expect(rows.map((row) => row.diffText)).toEqual([EDITED, ADDED]);
   });
 
   it("returns nothing for an empty change set", () => {

@@ -32,6 +32,7 @@ const PREFS: UiPrefs = {
 	experimentalStreamingEvolve: false,
 	pinnedVersion: null,
 	updateChannel: "stable",
+	gitAutoUpdate: "off",
 	featureFlagOverrides: null,
 	autoFormatNixFiles: false,
 };

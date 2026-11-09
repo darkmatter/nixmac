@@ -33,6 +33,7 @@ export const initialViewModelState: ViewModelState = {
   promptHistory: [],
   nixInstall: null,
   rebuildStatus: null,
+  secretsVaultState: null,
   rebuildLog: { lines: [], rawLines: [], notices: [] },
   evolveEvents: [],
 };

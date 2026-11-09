@@ -145,7 +145,10 @@ export function NixSetupStep() {
         </ul>
       </div>
 
-      <div className="mt-5 grid gap-3">
+      {/* Column stack, not a grid: an auto-sized grid track grows to its
+          items' max-content width, which pushed the installer cards past the
+          step column in a narrow window. */}
+      <div className="mt-5 flex flex-col gap-3">
         {NIX_INSTALLERS.map((installer, i) => (
           <InstallLink
             key={installer.href}
@@ -193,7 +196,7 @@ function InstallLink({
         event.preventDefault();
         void openExternalUrl(href);
       }}
-      className="group flex items-center gap-3 rounded-xl border border-border bg-card p-4 transition-colors hover:border-primary/50 hover:bg-accent"
+      className="group flex min-w-0 items-center gap-3 rounded-xl border border-border bg-card p-4 transition-colors hover:border-primary/50 hover:bg-accent"
     >
       <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-muted font-mono text-muted-foreground text-sm">
         {step}
@@ -202,11 +205,13 @@ function InstallLink({
         <span className="flex items-center gap-1 font-medium text-sm">
           {title}
           <ArrowUpRight
-            className="size-3.5 text-muted-foreground transition-transform group-hover:-translate-y-0.5 group-hover:translate-x-0.5"
+            className="size-3.5 shrink-0 text-muted-foreground transition-transform group-hover:-translate-y-0.5 group-hover:translate-x-0.5"
             aria-hidden="true"
           />
         </span>
-        <span className="block truncate text-muted-foreground text-xs">{subtitle}</span>
+        <span className="block text-pretty text-muted-foreground text-xs leading-snug">
+          {subtitle}
+        </span>
       </span>
     </a>
   );

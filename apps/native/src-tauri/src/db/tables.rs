@@ -1,27 +1,16 @@
 //! Diesel table declarations for query-builder-backed database code.
 
 diesel::table! {
-    commits (id) {
-        id -> BigInt,
-        hash -> Text,
-        tree_hash -> Text,
-        message -> Nullable<Text>,
-        created_at -> BigInt,
-    }
-}
-
-diesel::table! {
     evolutions (id) {
         id -> BigInt,
         origin_branch -> Text,
-        merged -> Integer,
-        builds -> Integer,
     }
 }
 
 diesel::table! {
-    change_summaries (id) {
+    patch_summaries (id) {
         id -> BigInt,
+        change_hash -> Text,
         title -> Text,
         description -> Text,
         status -> Text,
@@ -30,48 +19,29 @@ diesel::table! {
 }
 
 diesel::table! {
-    changes (id) {
+    summary_groups (id) {
         id -> BigInt,
-        hash -> Text,
-        filename -> Text,
-        diff -> Text,
-        line_count -> BigInt,
+        group_key -> Text,
+        title -> Text,
+        description -> Text,
+        status -> Text,
         created_at -> BigInt,
-        own_summary_id -> Nullable<BigInt>,
     }
 }
 
 diesel::table! {
-    group_summaries (change_id, change_summary_id) {
-        change_id -> BigInt,
-        change_summary_id -> BigInt,
+    summary_group_members (group_key, change_hash) {
+        group_key -> Text,
+        change_hash -> Text,
     }
 }
 
 diesel::table! {
-    change_sets (id) {
+    snapshots (id) {
         id -> BigInt,
-        commit_id -> Nullable<BigInt>,
-        base_commit_id -> BigInt,
-        commit_message -> Nullable<Text>,
+        snapshot_key -> Text,
         generated_commit_message -> Nullable<Text>,
-        created_at -> BigInt,
         evolution_id -> Nullable<BigInt>,
-    }
-}
-
-diesel::table! {
-    set_changes (change_set_id, change_id) {
-        change_set_id -> BigInt,
-        change_id -> BigInt,
-    }
-}
-
-diesel::table! {
-    prompts (id) {
-        id -> BigInt,
-        text -> Text,
-        commit_id -> Nullable<BigInt>,
         created_at -> BigInt,
     }
 }
@@ -83,22 +53,13 @@ diesel::table! {
     }
 }
 
-diesel::joinable!(changes -> change_summaries (own_summary_id));
-diesel::joinable!(group_summaries -> changes (change_id));
-diesel::joinable!(group_summaries -> change_summaries (change_summary_id));
-diesel::joinable!(change_sets -> evolutions (evolution_id));
-diesel::joinable!(set_changes -> change_sets (change_set_id));
-diesel::joinable!(set_changes -> changes (change_id));
-diesel::joinable!(prompts -> commits (commit_id));
+diesel::joinable!(snapshots -> evolutions (evolution_id));
 
 diesel::allow_tables_to_appear_in_same_query!(
-    change_sets,
-    change_summaries,
-    changes,
-    commits,
     evolutions,
-    group_summaries,
-    prompts,
+    patch_summaries,
     restore_commits,
-    set_changes,
+    snapshots,
+    summary_group_members,
+    summary_groups,
 );

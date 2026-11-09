@@ -8,7 +8,7 @@ alwaysApply: false
 
 **Do not use `process.env` or `import.meta.env` anywhere except `apps/native/src/lib/env.ts`.**
 
-All app code reads deployment settings through exports from that module (`settings`, `nixmacEnvironment`, `getProfileValue`, etc.).
+All app code reads deployment settings through exports from that module (`settings`, `nixmacEnvironment`, `nixmacVersion`, `isE2eProfile`).
 
 Benefits: single validation path, typed profile JSON, no scattered env reads, and build-time profile baking stays consistent with Rust (`build.rs`).
 

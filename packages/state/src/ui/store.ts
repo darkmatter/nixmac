@@ -36,6 +36,7 @@ export const initialUiState: UiStateValues = {
   showHistory: false,
   // @todo move to router
   showFilesystem: false,
+  showSecretsManagement: false,
   filesystemTargetSection: null,
   // @todo move to modal router
   feedbackOpen: false,
@@ -74,6 +75,7 @@ export type UiStateActions = {
   setSettingsOpen: (settingsOpen: boolean, tab?: SettingsTab | null) => void;
   setShowHistory: (showHistory: boolean) => void;
   setShowFilesystem: (showFilesystem: boolean, section?: string | null) => void;
+  setShowSecretsManagement: (showSecretsManagement: boolean) => void;
   setFeedbackOpen: (feedbackOpen: boolean) => void;
   setFeedbackTypeOverride: (feedbackTypeOverride: FeedbackType | null) => void;
   openFeedback: (type?: FeedbackType, initialText?: string) => void;
@@ -94,10 +96,16 @@ export type UiStateActions = {
   setEtcClobber: (etcClobber: EtcClobberCheckResult | null) => void;
   setEtcClobberDialogOpen: (etcClobberDialogOpen: boolean) => void;
   setConversationalResponse: (conversationalResponse: string | null) => void;
-  setEvolutionTelemetry: (evolutionTelemetry: EvolutionTelemetry | null) => void;
+  setEvolutionTelemetry: (
+    evolutionTelemetry: EvolutionTelemetry | null,
+  ) => void;
   setCommitMessageSuggestion: (commitMessageSuggestion: string | null) => void;
-  setFileDiffContents: (fileDiffContents: Record<string, FileDiffContents>) => void;
-  setRecommendedPrompt: (recommendedPrompt: RecommendedPrompt | null | undefined) => void;
+  setFileDiffContents: (
+    fileDiffContents: Record<string, FileDiffContents>,
+  ) => void;
+  setRecommendedPrompt: (
+    recommendedPrompt: RecommendedPrompt | null | undefined,
+  ) => void;
   setActiveStepOverride: (activeStepOverride: EvolveStep | null) => void;
 };
 
@@ -111,10 +119,16 @@ export const uiStore = create<UiStateStore>()(
     setSettingsOpen: (settingsOpen, tab) =>
       set({ settingsOpen, settingsActiveTab: tab ?? null }),
     setShowHistory: (showHistory) => set({ showHistory }),
+    setShowSecretsManagement: (showSecretsManagement) =>
+      set({ showSecretsManagement }),
     setShowFilesystem: (showFilesystem, section = null) =>
-      set({ showFilesystem, filesystemTargetSection: showFilesystem ? section : null }),
+      set({
+        showFilesystem,
+        filesystemTargetSection: showFilesystem ? section : null,
+      }),
     setFeedbackOpen: (feedbackOpen) => set({ feedbackOpen }),
-    setFeedbackTypeOverride: (feedbackTypeOverride) => set({ feedbackTypeOverride }),
+    setFeedbackTypeOverride: (feedbackTypeOverride) =>
+      set({ feedbackTypeOverride }),
     openFeedback: (type, initialText) =>
       set({
         feedbackOpen: true,
@@ -144,10 +158,13 @@ export const uiStore = create<UiStateStore>()(
       }),
     setBootstrapping: (isBootstrapping) => set({ isBootstrapping }),
     setRebuildContext: (rebuildContext) => set({ rebuildContext }),
-    setRebuildPanelDismissed: (rebuildPanelDismissed) => set({ rebuildPanelDismissed }),
+    setRebuildPanelDismissed: (rebuildPanelDismissed) =>
+      set({ rebuildPanelDismissed }),
     setEtcClobber: (etcClobber) => set({ etcClobber }),
-    setEtcClobberDialogOpen: (etcClobberDialogOpen) => set({ etcClobberDialogOpen }),
-    setConversationalResponse: (conversationalResponse) => set({ conversationalResponse }),
+    setEtcClobberDialogOpen: (etcClobberDialogOpen) =>
+      set({ etcClobberDialogOpen }),
+    setConversationalResponse: (conversationalResponse) =>
+      set({ conversationalResponse }),
     setEvolutionTelemetry: (evolutionTelemetry) => set({ evolutionTelemetry }),
     setCommitMessageSuggestion: (commitMessageSuggestion) =>
       set({ commitMessageSuggestion }),
@@ -169,6 +186,7 @@ const {
   setSettingsOpen,
   setShowHistory,
   setShowFilesystem,
+  setShowSecretsManagement,
   setFeedbackOpen,
   setFeedbackTypeOverride,
   openFeedback,
@@ -208,6 +226,7 @@ export const uiActions: UiStateActions & {
   setSettingsOpen,
   setShowHistory,
   setShowFilesystem,
+  setShowSecretsManagement,
   setFeedbackOpen,
   setFeedbackTypeOverride,
   openFeedback,

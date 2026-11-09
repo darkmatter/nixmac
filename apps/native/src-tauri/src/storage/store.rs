@@ -93,9 +93,7 @@ pub fn ensure_config_dir_exists<R: Runtime>(app: &AppHandle<R>) -> Result<String
 
     if canonical_config::is_canonical_config_path(path) {
         // Creating /etc/nix-darwin itself needs root — a one-time privileged
-        // step when the user keeps the config at the canonical path. The
-        // convention *link* (config elsewhere) is maintained during apply
-        // instead; see canonical_config::canonical_link_pending.
+        // step when the user keeps the config at the canonical path.
         canonical_config::ensure_canonical_dir_ready().map_err(anyhow::Error::msg)?;
     } else {
         std::fs::create_dir_all(path)?;
@@ -200,10 +198,6 @@ pub fn delete_web_account<R: Runtime>(app: &AppHandle<R>) -> Result<()> {
     crate::storage::legacy_kv::delete_legacy_key(app, WEB_ACCOUNT_ID_KEY)?;
     crate::storage::legacy_kv::delete_legacy_key(app, WEB_ACCOUNT_EMAIL_KEY)?;
     Ok(())
-}
-
-pub fn github_ready<R: Runtime>(app: &AppHandle<R>) -> Result<bool> {
-    Ok(get_device_api_key(app)?.is_some() && get_web_server_url().is_ok())
 }
 
 pub fn get_web_server_url() -> Result<String> {

@@ -5,7 +5,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { GitHubSource } from "@/components/widget/onboarding/source/github-source";
 
-type AccountStatus = { githubReady: boolean };
+type AccountStatus = { webApiAuthReady: boolean };
 type GithubStart = { installUrl: string; state: string };
 type GithubBootstrapStatus = { state: string; connected: boolean };
 type GithubStatus = { connected: boolean; login: string | null; installationId: number | null };
@@ -64,7 +64,7 @@ function renderGitHubSource() {
 describe("GitHubSource", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    mockAccountStatus.mockResolvedValue({ githubReady: false });
+    mockAccountStatus.mockResolvedValue({ webApiAuthReady: false });
     mockBootstrapStart.mockResolvedValue({
       installUrl: "https://github.com/apps/nixmac/installations/new?state=state-1",
       state: "state-1",

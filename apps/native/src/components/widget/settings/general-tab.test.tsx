@@ -48,6 +48,7 @@ describe("GeneralTab", () => {
     );
 
     await screen.findByText("0.0.0-test");
+    expect(screen.getByRole("combobox", { name: "Git auto-update" })).toBeInTheDocument();
     expect(screen.getByText("Support Nixmac")).toBeInTheDocument();
     expect(screen.getByText("Help fund continued development.")).toBeInTheDocument();
 

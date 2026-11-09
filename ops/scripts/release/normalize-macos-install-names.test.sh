@@ -22,6 +22,7 @@ FAKE_BIN="$TMP_DIR/bin"
 INSTALL_NAME_TOOL_LOG="$TMP_DIR/install-name-tool.log"
 TAURI_SIGNER_LOG="$TMP_DIR/tauri-signer.log"
 CODESIGN_LOG="$TMP_DIR/codesign.log"
+HDIUTIL_LOG="$TMP_DIR/hdiutil.log"
 TAURI_SHIM="$SCRIPT_DIR/../../../apps/native/node_modules/.bin/tauri"
 TAURI_BIN_DIR=$(dirname "$TAURI_SHIM")
 TAURI_NODE_MODULES_DIR=$(dirname "$TAURI_BIN_DIR")
@@ -33,6 +34,7 @@ touch "$INSTALL_NAME_TOOL_LOG"
 export INSTALL_NAME_TOOL_LOG
 export TAURI_SIGNER_LOG
 export CODESIGN_LOG
+export HDIUTIL_LOG
 
 if [ ! -x "$TAURI_SHIM" ]; then
 	if [ ! -d "$TAURI_NODE_MODULES_DIR" ]; then
@@ -105,6 +107,11 @@ printf '%s\n' "fresh signature" >"${target}.sig"
 SH
 chmod +x "$FAKE_BIN/bun"
 
+# The signing routine refuses certificates from any team other than the
+# checked-in signing-team-id, so the fake identity must carry the real team.
+TEAM_ID="$(tr -d '[:space:]' <"$SCRIPT_DIR/../../../apps/native/src-tauri/signing-team-id")"
+export TEAM_ID
+
 cat >"$FAKE_BIN/security" <<'SH'
 #!/usr/bin/env bash
 set -euo pipefail
@@ -114,7 +121,7 @@ if [ "$1" != "find-identity" ]; then
 	exit 2
 fi
 
-printf '%s\n' '  1) ABCDEF1234567890 "Developer ID Application: Test Signing (TEAMID)"'
+printf '  1) ABCDEF1234567890 "Developer ID Application: Test Signing (%s)"\n' "$TEAM_ID"
 SH
 chmod +x "$FAKE_BIN/security"
 
@@ -126,25 +133,82 @@ printf '%s\n' "$*" >>"$CODESIGN_LOG"
 SH
 chmod +x "$FAKE_BIN/codesign"
 
+cat >"$FAKE_BIN/hdiutil" <<'SH'
+#!/usr/bin/env bash
+set -euo pipefail
+
+printf '%s\n' "$*" >>"$HDIUTIL_LOG"
+
+case "$1" in
+	convert)
+		output=""
+		while [ "$#" -gt 0 ]; do
+			if [ "$1" = "-o" ]; then
+				output="$2"
+				break
+			fi
+			shift
+		done
+		if [ -z "$output" ]; then
+			echo "missing hdiutil convert output" >&2
+			exit 2
+		fi
+		# The normalizer sizes the RW image from its apparent (stat) size, so
+		# the fake conversion output claims 200000KB without allocating it.
+		dd if=/dev/zero of="$output" bs=1 count=0 seek=204800000 2>/dev/null
+		;;
+	attach)
+		mount_point=""
+		while [ "$#" -gt 0 ]; do
+			if [ "$1" = "-mountpoint" ]; then
+				mount_point="$2"
+				break
+			fi
+			shift
+		done
+		if [ -z "$mount_point" ]; then
+			echo "missing hdiutil attach mount point" >&2
+			exit 2
+		fi
+		mkdir -p "$mount_point/NixIconvDmg.app/Contents/MacOS"
+		dd if=/dev/zero of="$mount_point/NixIconvDmg.app/Contents/MacOS/nix-iconv-dmg" bs=1 count=0 seek=157286400 2>/dev/null
+		for bin in nixmac-helper nixmac-sync-agent; do
+			printf 'fake mach-o\n' >"$mount_point/NixIconvDmg.app/Contents/MacOS/$bin"
+			chmod +x "$mount_point/NixIconvDmg.app/Contents/MacOS/$bin"
+		done
+		;;
+	detach | resize)
+		;;
+	*)
+		echo "unexpected hdiutil invocation: $*" >&2
+		exit 2
+		;;
+esac
+SH
+chmod +x "$FAKE_BIN/hdiutil"
+
+# Every app gets the helper sidecars: the shared signing routine hard-fails
+# when they are missing from a bundle.
 make_app() {
 	local app="$1"
 	local executable_name="$2"
 	mkdir -p "$app/Contents/MacOS"
-	printf 'fake mach-o\n' >"$app/Contents/MacOS/$executable_name"
-	chmod +x "$app/Contents/MacOS/$executable_name"
-}
-
-add_helper_bins() {
-	local app="$1"
-	for helper in nixmac-helper nixmac-sync-agent; do
-		printf 'fake mach-o\n' >"$app/Contents/MacOS/$helper"
-		chmod +x "$app/Contents/MacOS/$helper"
+	for bin in "$executable_name" nixmac-helper nixmac-sync-agent; do
+		printf 'fake mach-o\n' >"$app/Contents/MacOS/$bin"
+		chmod +x "$app/Contents/MacOS/$bin"
 	done
 }
 
+# The normalizer's output is captured, so dump it when a run fails: under
+# set -e a bare failure would kill the test with no message while the EXIT
+# trap deletes the only copy of the error.
 run_normalizer() {
 	local target="$1"
-	PATH="$FAKE_BIN:$PATH" "$SCRIPT" "$target" >"$TMP_DIR/normalizer.out" 2>&1
+	if ! PATH="$FAKE_BIN:$PATH" "$SCRIPT" "$target" >"$TMP_DIR/normalizer.out" 2>&1; then
+		echo "normalizer failed for $target:" >&2
+		cat "$TMP_DIR/normalizer.out" >&2
+		exit 1
+	fi
 }
 
 make_app "$TMP_DIR/Clean.app" clean
@@ -179,17 +243,20 @@ fi
 : >"$INSTALL_NAME_TOOL_LOG"
 : >"$CODESIGN_LOG"
 make_app "$TMP_DIR/NixIconvUpdater.app" nix-iconv-updater
-add_helper_bins "$TMP_DIR/NixIconvUpdater.app"
 tar -czf "$TMP_DIR/nixmac.app.tar.gz" -C "$TMP_DIR" NixIconvUpdater.app
 printf '%s\n' "stale signature" >"$TMP_DIR/nixmac.app.tar.gz.sig"
 ABS_TAR_PATH="$(cd "$TMP_DIR" && pwd -P)/nixmac.app.tar.gz"
 RUNNER_TEMP="$TMP_DIR/runner"
 mkdir -p "$RUNNER_TEMP"
 touch "$RUNNER_TEMP/app-signing.keychain-db"
-(
+if ! (
 	cd "$TMP_DIR"
 	RUNNER_TEMP="$RUNNER_TEMP" TAURI_SIGNING_PRIVATE_KEY=test PATH="$FAKE_BIN:$PATH" "$SCRIPT" "nixmac.app.tar.gz" >"$TMP_DIR/tarball-normalizer.out" 2>&1
-)
+); then
+	echo "normalizer failed for the updater tarball:" >&2
+	cat "$TMP_DIR/tarball-normalizer.out" >&2
+	exit 1
+fi
 
 if ! grep -F -- "-change /nix/store/example-libiconv-109.100.2/lib/libiconv.2.dylib /usr/lib/libiconv.2.dylib" "$INSTALL_NAME_TOOL_LOG" >/dev/null; then
 	echo "expected updater tarball app to be normalized" >&2
@@ -203,9 +270,24 @@ if ! grep -F "NixIconvUpdater.app" "$CODESIGN_LOG" >/dev/null; then
 	exit 1
 fi
 
-if ! grep -F "NixIconvUpdater.app/Contents/MacOS/nixmac-helper" "$CODESIGN_LOG" >/dev/null ||
-	! grep -F "NixIconvUpdater.app/Contents/MacOS/nixmac-sync-agent" "$CODESIGN_LOG" >/dev/null; then
-	echo "expected nested helper binaries to be signed before sealing the app" >&2
+if ! grep -F -- "--identifier com.darkmatter.nixmac.helper" "$CODESIGN_LOG" | grep -F "NixIconvUpdater.app/Contents/MacOS/nixmac-helper" >/dev/null ||
+	! grep -F -- "--identifier com.darkmatter.nixmac.sync-agent" "$CODESIGN_LOG" | grep -F "NixIconvUpdater.app/Contents/MacOS/nixmac-sync-agent" >/dev/null; then
+	echo "expected nested helper binaries to be signed with pinned identifiers before sealing the app" >&2
+	cat "$CODESIGN_LOG" >&2
+	exit 1
+fi
+
+if ! grep -F -- "--entitlements" "$CODESIGN_LOG" | grep -F "entitlements-none.plist" | grep -F "MacOS/nixmac-helper" >/dev/null ||
+	! grep -F -- "--entitlements" "$CODESIGN_LOG" | grep -F "entitlements-none.plist" | grep -F "MacOS/nixmac-sync-agent" >/dev/null; then
+	echo "expected nested helper binaries to be signed with the empty entitlements" >&2
+	cat "$CODESIGN_LOG" >&2
+	exit 1
+fi
+
+# Inside-out: --deep on a bundle sign would re-sign the nested binaries and
+# clobber their pinned identifiers and entitlements.
+if grep -- "--sign" "$CODESIGN_LOG" | grep -- "--deep" >/dev/null; then
+	echo "expected the updater tarball app to be signed without --deep" >&2
 	cat "$CODESIGN_LOG" >&2
 	exit 1
 fi
@@ -256,6 +338,64 @@ fi
 
 if ! grep -F -- "--sign -" "$CODESIGN_LOG" >/dev/null; then
 	echo "expected fallback signing to use an ad-hoc identity" >&2
+	cat "$CODESIGN_LOG" >&2
+	exit 1
+fi
+
+if ! grep -F -- "--identifier com.darkmatter.nixmac.helper" "$CODESIGN_LOG" >/dev/null ||
+	! grep -F -- "--identifier com.darkmatter.nixmac.sync-agent" "$CODESIGN_LOG" >/dev/null; then
+	echo "expected ad-hoc fallback to keep the pinned nested identifiers" >&2
+	cat "$CODESIGN_LOG" >&2
+	exit 1
+fi
+
+if grep -- "--sign" "$CODESIGN_LOG" | grep -- "--deep" >/dev/null; then
+	echo "expected ad-hoc fallback to sign without --deep" >&2
+	cat "$CODESIGN_LOG" >&2
+	exit 1
+fi
+
+: >"$CODESIGN_LOG"
+touch "$TMP_DIR/nixmac.dmg"
+if ! RUNNER_TEMP="$TMP_DIR/dmg-runner" PATH="$FAKE_BIN:$PATH" "$SCRIPT" "$TMP_DIR/nixmac.dmg" >"$TMP_DIR/dmg-normalizer.out" 2>&1; then
+	echo "normalizer failed for the DMG:" >&2
+	cat "$TMP_DIR/dmg-normalizer.out" >&2
+	exit 1
+fi
+
+if ! grep -F "attach -readonly" "$HDIUTIL_LOG" >/dev/null; then
+	echo "expected DMG sizing inspection to mount read-only" >&2
+	cat "$HDIUTIL_LOG" >&2
+	exit 1
+fi
+
+if ! grep -F "resize -size 419136k" "$HDIUTIL_LOG" >/dev/null; then
+	echo "expected DMG resize to include its largest file plus 64MB overhead" >&2
+	cat "$HDIUTIL_LOG" >&2
+	exit 1
+fi
+
+READONLY_ATTACH_LINE=$(grep -n -F "attach -readonly" "$HDIUTIL_LOG" | head -1 | cut -d: -f1)
+FIRST_DETACH_LINE=$(grep -n -F "detach " "$HDIUTIL_LOG" | head -1 | cut -d: -f1)
+RESIZE_LINE=$(grep -n -F "resize -size 419136k" "$HDIUTIL_LOG" | head -1 | cut -d: -f1)
+READWRITE_ATTACH_LINE=$(grep -n -F "attach -readwrite" "$HDIUTIL_LOG" | head -1 | cut -d: -f1)
+if ! ((READONLY_ATTACH_LINE < FIRST_DETACH_LINE &&
+	FIRST_DETACH_LINE < RESIZE_LINE &&
+	RESIZE_LINE < READWRITE_ATTACH_LINE)); then
+	echo "expected read-only inspect, detach, resize, then read-write attach ordering" >&2
+	cat "$HDIUTIL_LOG" >&2
+	exit 1
+fi
+
+if ! grep -F -- "--identifier com.darkmatter.nixmac.helper" "$CODESIGN_LOG" | grep -F "NixIconvDmg.app/Contents/MacOS/nixmac-helper" >/dev/null ||
+	! grep -F -- "--identifier com.darkmatter.nixmac.sync-agent" "$CODESIGN_LOG" | grep -F "NixIconvDmg.app/Contents/MacOS/nixmac-sync-agent" >/dev/null; then
+	echo "expected DMG app copy to be signed through the shared routine with pinned nested identifiers" >&2
+	cat "$CODESIGN_LOG" >&2
+	exit 1
+fi
+
+if grep -- "--sign" "$CODESIGN_LOG" | grep -- "--deep" >/dev/null; then
+	echo "expected DMG app copy to be signed without --deep" >&2
 	cat "$CODESIGN_LOG" >&2
 	exit 1
 fi

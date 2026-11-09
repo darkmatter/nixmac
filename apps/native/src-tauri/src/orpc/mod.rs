@@ -30,6 +30,7 @@ mod preferences;
 mod preview_indicator;
 mod prompt_history;
 mod scanner;
+mod secrets;
 mod settings;
 mod summarized_changes;
 mod sync;
@@ -59,6 +60,7 @@ pub fn build_router() -> Router<OrpcCtx> {
         .nest("homebrew", homebrew::routes())
         .nest("launchd", launchd::routes())
         .nest("scanner", scanner::routes())
+        .nest("secrets", secrets::routes())
         .nest("billing", billing::routes())
         .nest("system", system::routes())
         .nest("sync", sync::routes())

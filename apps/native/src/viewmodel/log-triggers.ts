@@ -13,12 +13,6 @@ const appManagementNotice: RebuildNotice = {
   actionLabel: "Open App Management",
 };
 
-const canonicalLinkBlockedNotice: RebuildNotice = {
-  id: "canonical-link-blocked",
-  title: "/etc/nix-darwin was not updated",
-  body: "Your configuration was applied, but /etc/nix-darwin already contains another configuration, which nixmac won't delete. Running darwin-rebuild from a terminal without --flake will keep using whatever is there. Move or remove /etc/nix-darwin and rebuild to let nixmac maintain the link.",
-};
-
 const buildLogTriggers: BuildLogTrigger[] = [
   {
     matches: (line) => {
@@ -30,12 +24,6 @@ const buildLogTriggers: BuildLogTrigger[] = [
       );
     },
     notice: appManagementNotice,
-  },
-  {
-    // Emitted by the backend when the canonical-link maintenance during
-    // activation found /etc/nix-darwin occupied by a foreign directory.
-    matches: (line) => line.toLowerCase().includes("/etc/nix-darwin was not updated"),
-    notice: canonicalLinkBlockedNotice,
   },
 ];
 

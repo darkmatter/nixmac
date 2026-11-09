@@ -24,11 +24,7 @@ pub fn upsert(pool: &DbPool, existing_id: Option<i64>, origin_branch: &str) -> R
     }
 
     diesel::insert_into(evolutions::table)
-        .values((
-            evolutions::origin_branch.eq(origin_branch),
-            evolutions::merged.eq(0),
-            evolutions::builds.eq(0),
-        ))
+        .values(evolutions::origin_branch.eq(origin_branch))
         .execute(&mut conn)?;
 
     let id = diesel::select(diesel::dsl::sql::<diesel::sql_types::BigInt>(

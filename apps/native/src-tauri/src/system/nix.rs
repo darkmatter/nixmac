@@ -35,7 +35,7 @@ use std::sync::OnceLock;
 use tauri::{AppHandle, Emitter};
 
 use crate::shared_types::LaunchdItemType;
-use crate::utils::normalize_path_input;
+use crate::utils::{nix_string_literal, normalize_path_input};
 
 const NIX_PATHS_FALLBACK: &[&str] = &[
     "/run/current-system/sw/bin",
@@ -178,7 +178,7 @@ pub fn is_rebuild_needed(hostname: &str, config_dir: &str) -> Result<bool> {
         }
         ```
     */
-    let host_attr = serde_json::to_string(hostname)?;
+    let host_attr = nix_string_literal(hostname);
     let flake_attr = format!(".#darwinConfigurations.{}.system", host_attr);
 
     let expected_output = nix_command(config_dir)
@@ -215,7 +215,7 @@ pub fn is_rebuild_needed(hostname: &str, config_dir: &str) -> Result<bool> {
 /// Gets the `system.primaryUser` for the given host by running `nix eval` if it's
 /// defined. This is required for (for example) setting system.defaults.
 pub fn get_system_primary_user(hostname: &str, config_dir: &str) -> Option<String> {
-    let host_attr = serde_json::to_string(hostname).ok()?;
+    let host_attr = nix_string_literal(hostname);
     let flake_attr = format!(
         ".#darwinConfigurations.{}.config.system.primaryUser",
         host_attr
@@ -249,7 +249,7 @@ pub fn get_nix_system_defaults_for_domain(
     domain: &str,
 ) -> Result<BTreeMap<String, String>> {
     // nix eval ~{config_dir}/#darwinConfigurations.<hostname>.config.system.defaults --json
-    let host_attr = serde_json::to_string(hostname)?;
+    let host_attr = nix_string_literal(hostname);
     let flake_attr = format!(
         ".#darwinConfigurations.{}.config.system.defaults.{}",
         host_attr, domain
@@ -326,7 +326,7 @@ fn eval_nix_launchd_items(
     option_path: &str,
     item_type: LaunchdItemType,
 ) -> Result<Vec<NixLaunchdItem>> {
-    let host_attr = serde_json::to_string(hostname)?;
+    let host_attr = nix_string_literal(hostname);
     let flake_attr = format!(
         ".#darwinConfigurations.{}.config.{}",
         host_attr, option_path
@@ -461,7 +461,7 @@ pub fn get_nix_environment_etc_entries(
 ) -> Result<Vec<NixEnvironmentEtcEntry>> {
     // Serialize via serde_json so an unusual hostname can't break out of the
     // flake attribute path (e.g. embedded quotes).
-    let host_attr = serde_json::to_string(hostname)?;
+    let host_attr = nix_string_literal(hostname);
     let flake_attr = format!(
         ".#darwinConfigurations.{}.config.environment.etc",
         host_attr
@@ -511,7 +511,7 @@ pub fn get_nix_home_manager_xdg_config_file_entries(
     hostname: &str,
     config_dir: &str,
 ) -> Result<Vec<NixHomeManagerXdgConfigFileEntry>> {
-    let host_attr = serde_json::to_string(hostname)?;
+    let host_attr = nix_string_literal(hostname);
     let flake_attr = format!(".#darwinConfigurations.{}.config", host_attr);
 
     let output = nix_command(config_dir)
@@ -575,7 +575,7 @@ pub fn get_nix_home_manager_copy_apps_entries(
     hostname: &str,
     config_dir: &str,
 ) -> Result<Vec<NixHomeManagerCopyAppsEntry>> {
-    let host_attr = serde_json::to_string(hostname)?;
+    let host_attr = nix_string_literal(hostname);
     let flake_attr = format!(".#darwinConfigurations.{}.config", host_attr);
 
     let output = nix_command(config_dir)

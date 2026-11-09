@@ -3,6 +3,8 @@ import { DarwinWidget } from "@/components/widget/widget";
 import type { SettingsTab } from "@nixmac/state";
 import { Outlet, RouterProvider, createMemoryHistory, createRootRoute, createRoute, createRouter, useRouterState } from "@tanstack/react-router";
 
+export type SettingsPrompt = "hosted-auth";
+
 /**
  * Code-based TanStack Router for the nixmac Tauri webview.
  *
@@ -41,6 +43,7 @@ const settingsRoute = createRoute({
   path: "/settings",
   validateSearch: (search: Record<string, unknown>) => ({
     tab: (search.tab as SettingsTab | null) ?? null,
+    prompt: search.prompt === "hosted-auth" ? "hosted-auth" : null,
   }),
   component: SettingsDialog,
 });
@@ -103,8 +106,11 @@ declare module "@tanstack/react-router" {
 
 export const nav = {
   goHome: () => router.navigate({ to: "/" }),
-  openSettings: (tab?: SettingsTab) =>
-    router.navigate({ to: "/settings", search: { tab: tab ?? null } }),
+  openSettings: (tab?: SettingsTab, prompt?: SettingsPrompt) =>
+    router.navigate({
+      to: "/settings",
+      search: { tab: tab ?? null, prompt: prompt ?? null },
+    }),
   closeSettings: () => router.navigate({ to: "/" }),
 } as const;
 

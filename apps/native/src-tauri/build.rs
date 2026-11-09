@@ -3,17 +3,29 @@ mod env_keys {
     include!("src/env_keys.rs");
 }
 
+mod build_id {
+    #![allow(dead_code)]
+    include!("src/build_id.rs");
+}
+
 use std::path::Path;
 use std::process::Command;
 
 /// Embed `apps/native/env.{development,release,e2e}.json` selected by `NIXMAC_ENV`.
+///
+/// Accepted values must stay in sync with `apps/native/nixmac-profile.ts`.
+/// Unset means development; anything else stops the build rather than falling
+/// through to the development profile.
 fn embed_build_profile() {
     let native_app_dir = Path::new(env!("CARGO_MANIFEST_DIR")).join("..");
-    let profile = std::env::var("NIXMAC_ENV").unwrap_or_else(|_| "development".to_string());
-    let file = match profile.as_str() {
-        "prod" | "production" => "env.release.json",
+    let selector = std::env::var("NIXMAC_ENV").unwrap_or_else(|_| "development".to_string());
+    let file = match selector.as_str() {
+        "development" => "env.development.json",
+        "production" => "env.release.json",
         "e2e" => "env.e2e.json",
-        _ => "env.development.json",
+        other => {
+            panic!("NIXMAC_ENV must be unset or one of development, production, e2e; got {other:?}")
+        }
     };
     let path = native_app_dir.join(file);
 
@@ -25,12 +37,106 @@ fn embed_build_profile() {
         );
     }
 
-    let json = std::fs::read_to_string(&path).unwrap_or_else(|_| "{}".to_string());
-    let minified = serde_json::from_str::<serde_json::Value>(&json)
-        .ok()
-        .and_then(|value| serde_json::to_string(&value).ok())
-        .unwrap_or_else(|| "{}".to_string());
+    // An unreadable or malformed profile stops the build. Degrading to "{}"
+    // compiles an app whose every setting silently falls back to its default.
+    let json = std::fs::read_to_string(&path)
+        .unwrap_or_else(|error| panic!("cannot read {}: {error}", path.display()));
+    let value: serde_json::Value = serde_json::from_str(&json)
+        .unwrap_or_else(|error| panic!("cannot parse {}: {error}", path.display()));
+    // The selector picks the file; the file names the same environment in its own
+    // `NIXMAC_ENV` key. That key is what `crate::env::nixmac_env()` reports for
+    // telemetry and the startup log, unless `NIXMAC_ENV` is set in the running
+    // process, which takes precedence over the embed. A profile mislabelled
+    // `development` would therefore have a release build report itself as a
+    // development one. The frontend is baked from its own copy of the profile
+    // and makes the same check there (`apps/native/nixmac-profile.ts`).
+    let declared = value.get("NIXMAC_ENV");
+    if declared.and_then(serde_json::Value::as_str) != Some(selector.as_str()) {
+        panic!(
+            "{} declares NIXMAC_ENV {}, but this build selected {selector:?}; the two must name the same environment",
+            path.display(),
+            declared.map_or_else(|| "no value at all".to_string(), ToString::to_string)
+        );
+    }
+
+    let minified = serde_json::to_string(&value)
+        .unwrap_or_else(|error| panic!("cannot re-encode {}: {error}", path.display()));
     println!("cargo:rustc-env=NIXMAC_ENV_PROFILE_JSON={minified}");
+}
+
+/// Embed the Apple signing team for the privileged-helper peer handshake
+/// (`privileged_helper/peer_auth.rs` reads `option_env!("NIXMAC_TEAM_ID")`).
+///
+/// The checked-in `signing-team-id` file is the single source of truth for
+/// the team's Developer ID; the release sign scripts read the same file, and
+/// `sign-app.sh` refuses a certificate from any other team. An explicit
+/// `NIXMAC_TEAM_ID` env var wins so personal-certificate builds can pin
+/// their own team. The value is not a secret: every distributed signed
+/// binary carries it.
+fn embed_signing_team_id() {
+    println!("cargo:rerun-if-env-changed=NIXMAC_TEAM_ID");
+    let file = Path::new(env!("CARGO_MANIFEST_DIR")).join("signing-team-id");
+    println!("cargo:rerun-if-changed={}", file.display());
+
+    // An empty env var falls back to the file, matching the sign scripts'
+    // `${NIXMAC_TEAM_ID:-...}`.
+    let team_id = std::env::var("NIXMAC_TEAM_ID")
+        .ok()
+        .filter(|value| !value.trim().is_empty())
+        .or_else(|| std::fs::read_to_string(&file).ok())
+        .map(|value| value.trim().to_string())
+        .filter(|value| !value.is_empty());
+    // When absent, leave NIXMAC_TEAM_ID unset: peer validation fails closed
+    // and activation falls back to the interactive administrator prompt.
+    if let Some(team_id) = team_id {
+        println!("cargo:rustc-env=NIXMAC_TEAM_ID={team_id}");
+    }
+}
+
+/// Embed the build identity (`NIXMAC_BUILD_ID`, supplied by CI from the
+/// packaged source revision) into every target of this crate — the GUI, the
+/// helper, and the sync agent — and stamp the same string into the plist the
+/// macOS bundler merges into the app's `Info.plist`. Packaged builds
+/// (`NIXMAC_ENV` = `production`) hard-fail on a missing or empty value;
+/// development builds fall back to a fixed literal. Git is deliberately never
+/// run here: the value must describe the packaged source, which only the build
+/// orchestrator knows.
+///
+/// One resolution feeds both the compiled constant and the on-disk stamp, so a
+/// GUI comparing itself against the bundle it was built from always matches.
+fn embed_build_id() {
+    println!("cargo:rerun-if-env-changed=NIXMAC_BUILD_ID");
+    println!("cargo:rerun-if-env-changed=NIXMAC_ENV");
+
+    let packaged = matches!(std::env::var("NIXMAC_ENV").as_deref(), Ok("production"));
+    let raw = std::env::var("NIXMAC_BUILD_ID").ok();
+    let build_id = match build_id::resolve_build_id(raw.as_deref(), packaged) {
+        Ok(build_id) => build_id,
+        Err(error) => panic!("{error}"),
+    };
+    println!("cargo:rustc-env=NIXMAC_BUILD_ID={build_id}");
+    stamp_bundle_build_id(&build_id);
+}
+
+/// Write the stamped copy of the tracked `Info.plist` that
+/// `bundle > macOS > infoPlist` points at.
+///
+/// The stamp has to live in the bundle rather than only in the executables: a
+/// running GUI reads it to notice that its own bundle was replaced on disk. The
+/// tracked template stays the source of every other key; this copy is generated
+/// output.
+fn stamp_bundle_build_id(build_id: &str) {
+    let crate_dir = Path::new(env!("CARGO_MANIFEST_DIR"));
+    let template = crate_dir.join(build_id::INFO_PLIST_TEMPLATE_PATH);
+    let stamped = crate_dir.join(build_id::STAMPED_INFO_PLIST_PATH);
+    println!("cargo:rerun-if-changed={}", template.display());
+    // Regenerate when the output is missing (a cleaned checkout): a bundle
+    // without the stamp reads as somebody else's build to every GUI.
+    println!("cargo:rerun-if-changed={}", stamped.display());
+
+    if let Err(error) = build_id::write_stamped_info_plist(&template, &stamped, build_id) {
+        panic!("{error}");
+    }
 }
 
 fn add_debug_swift_runtime_rpaths() {
@@ -71,6 +177,8 @@ fn add_debug_swift_runtime_rpaths() {
 
 fn main() {
     embed_build_profile();
+    embed_signing_team_id();
+    embed_build_id();
     add_debug_swift_runtime_rpaths();
 
     // Set up passthrough for relevant environment variables.

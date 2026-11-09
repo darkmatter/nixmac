@@ -1,9 +1,4 @@
-import {
-  type ChangeFileSummary,
-  categorizeRenamed,
-  enrichChanges,
-  summarizeChangesByFile,
-} from "@/components/widget/utils";
+import { categorizeRenamed, enrichChanges } from "@/components/widget/utils";
 import {
   type DiffLineStats,
   countDiffLineStats,
@@ -11,13 +6,17 @@ import {
 import type { Change, ChangeType } from "@/ipc/types";
 
 /**
- * A per-file drift row: the collapsed file summary, its summed +/- line stats,
- * and the full unified diff (every hunk of the file concatenated) so the row can
- * expand to reveal the diff without any further fetching.
+ * A per-change drift row: one independently detected hunk, its +/- line
+ * stats, and its unified diff. Multiple rows may legitimately have the same
+ * filename when a file contains separate semantic changes.
  */
-export type DriftFileRowData = ChangeFileSummary & { stats: DiffLineStats; diffText: string };
+export type DriftFileRowData = ReturnType<typeof enrichChanges>[number] & {
+  hunkCount: number;
+  stats: DiffLineStats;
+  diffText: string;
+};
 
-type DriftSummaryCounts = {
+export type DriftSummaryCounts = {
   added: number;
   modified: number;
   removed: number;
@@ -35,37 +34,22 @@ export const CHANGE_TYPE_GLYPH: Record<ChangeType, { label: string; verb: string
 };
 
 /**
- * Collapse raw git changes into one row per file, carrying the summed +/- line
- * counts and the full unified diff. `summarizeChangesByFile` keeps only the
- * first hunk's diff, so the line stats and the combined diff text are both
- * accumulated from the enriched changes first and then attached.
+ * Preserve every raw git change as a review row. A filename is display data,
+ * not the identity of a semantic change, so grouping by it would make
+ * unrelated hunks impossible to inspect or summarize separately.
  */
 export function deriveDriftFiles(changes: Change[]): DriftFileRowData[] {
   const enriched = categorizeRenamed(enrichChanges(changes));
 
-  const statsByFile = new Map<string, DiffLineStats>();
-  const diffByFile = new Map<string, string[]>();
-  for (const change of enriched) {
-    const prev = statsByFile.get(change.filename) ?? { added: 0, removed: 0 };
-    const next = countDiffLineStats(change.diff);
-    statsByFile.set(change.filename, {
-      added: prev.added + next.added,
-      removed: prev.removed + next.removed,
-    });
-
-    const hunks = diffByFile.get(change.filename) ?? [];
-    hunks.push(change.diff);
-    diffByFile.set(change.filename, hunks);
-  }
-
-  return summarizeChangesByFile(enriched).map((file) => ({
-    ...file,
-    stats: statsByFile.get(file.filename) ?? { added: 0, removed: 0 },
-    diffText: (diffByFile.get(file.filename) ?? [file.diff]).join("\n"),
+  return enriched.map((change) => ({
+    ...change,
+    hunkCount: 1,
+    stats: countDiffLineStats(change.diff),
+    diffText: change.diff,
   }));
 }
 
-/** Count files by edit kind. Renamed files are folded into "modified". */
+/** Count detected changes by edit kind. Renamed files are folded into "modified". */
 export function summarizeDriftCounts(files: DriftFileRowData[]): DriftSummaryCounts {
   return files.reduce<DriftSummaryCounts>(
     (acc, file) => {

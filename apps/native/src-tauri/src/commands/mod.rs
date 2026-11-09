@@ -11,8 +11,6 @@
 //! types of the inputs and outputs, then leaves it up to you to manually put
 //! together. It also lets us use react queries that get rid of the need to create
 //! any stores for the values that are read by the frontend, and a free cache.
-mod helpers;
-
 pub mod account;
 pub mod apply;
 pub mod cli_tool;
@@ -24,6 +22,7 @@ pub mod evolve;
 pub mod evolve_state;
 pub mod feedback;
 pub mod git;
+pub mod helpers;
 pub mod homebrew;
 pub mod launchd;
 pub mod onboarding;

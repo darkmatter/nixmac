@@ -10,12 +10,15 @@
 //! - App Management - recommended so activation can update managed apps
 //! - Administrator privileges (sudo access)
 
+use crate::privileged_helper::reconcile::Reconciled;
 pub(crate) use crate::shared_types::{Permission, PermissionStatus, PermissionsState};
+use crate::system::helper_permission;
 use anyhow::Result;
 use log::{debug, info, warn};
 use std::fs;
 use std::path::PathBuf;
 use std::process::Command;
+use tauri::{AppHandle, Runtime};
 
 impl Default for PermissionsState {
     fn default() -> Self {
@@ -82,6 +85,9 @@ fn get_default_permissions() -> Vec<Permission> {
         privileged_helper_permission(
             default_status,
             "Enable this once per device to allow nixmac to activate already-built system generations unattended.",
+            // No report yet, so nothing says macOS is waiting on the user. Every
+            // path that has one replaces this row whole (`helper_row`).
+            true,
         ),
     ]
 }
@@ -106,6 +112,11 @@ fn vite_skip_permissions_enabled() -> bool {
     false
 }
 
+/// Whether this build reports every permission granted without probing.
+pub(crate) fn skip_enabled() -> bool {
+    skip_permissions_enabled()
+}
+
 fn skip_permissions_enabled() -> bool {
     vite_skip_permissions_enabled() || e2e_skip_permissions_enabled()
 }
@@ -114,6 +125,12 @@ fn granted_permissions_state() -> PermissionsState {
     let mut permissions = get_default_permissions();
     for perm in &mut permissions {
         perm.status = PermissionStatus::Granted;
+        // Granted here is a debug-build fiction, not a probe result; say so
+        // instead of letting the row imply the real thing was verified.
+        perm.instructions = Some(
+            "Check skipped: this build has VITE_NIXMAC_SKIP_PERMISSIONS enabled, so the real status was not probed."
+                .to_string(),
+        );
     }
     PermissionsState {
         permissions,
@@ -134,7 +151,11 @@ fn granted_folder_permission(id: &str, name: &str, description: &str) -> Permiss
     }
 }
 
-fn privileged_helper_permission(status: PermissionStatus, instructions: &str) -> Permission {
+fn privileged_helper_permission(
+    status: PermissionStatus,
+    instructions: &str,
+    can_request_programmatically: bool,
+) -> Permission {
     Permission {
         id: "privileged-helper".to_string(),
         name: "Unattended Sync Helper".to_string(),
@@ -142,7 +163,7 @@ fn privileged_helper_permission(status: PermissionStatus, instructions: &str) ->
             "Required for unattended device sync to activate builds without a password prompt"
                 .to_string(),
         required: true,
-        can_request_programmatically: true,
+        can_request_programmatically,
         status,
         instructions: Some(instructions.to_string()),
     }
@@ -232,28 +253,70 @@ fn check_folder_access(path: &PathBuf) -> PermissionStatus {
     }
 }
 
-/// Check if we have Full Disk Access.
+/// Opens every inconclusive Full Disk Access message: the check reached no
+/// verdict, which is not the same as finding the access missing.
+const FULL_DISK_ACCESS_INCONCLUSIVE_PREFIX: &str = "Could not determine Full Disk Access: ";
+
+/// Closes every inconclusive Full Disk Access message with the one action a
+/// user can take when the check cannot decide for them.
+const FULL_DISK_ACCESS_INCONCLUSIVE_HINT: &str = " If a rebuild fails with a permissions error, add nixmac under System Settings → Privacy & Security → Full Disk Access.";
+
+/// Why the probe reached no verdict: every path it reads was missing.
+///
+/// The probe reads files a granted process can read and a denied one cannot.
+/// If none of them exist there is nothing to read, so it proves neither state —
+/// say so, rather than implying we checked and found the access missing.
+const FULL_DISK_ACCESS_NO_PROBE_PATHS: &str =
+    "none of the files this check probes exist on this Mac.";
+
+/// Why the probe reached no verdict: the Mac reported no home directory.
+///
+/// Every probe path but one is under the home directory, so without it the
+/// check never ran — again inconclusive rather than denied.
+const FULL_DISK_ACCESS_NO_HOME: &str =
+    "this Mac reported no home directory, so the check could not run.";
+
+/// Shown on the Full Disk Access row when the probe reached no verdict.
+///
+/// Both inconclusive paths say the same thing either side of their own reason,
+/// so the wording stays in one place. Built only on those paths, never on the
+/// granted or denied ones.
+fn full_disk_access_inconclusive(reason: &str) -> String {
+    format!("{FULL_DISK_ACCESS_INCONCLUSIVE_PREFIX}{reason}{FULL_DISK_ACCESS_INCONCLUSIVE_HINT}")
+}
+
+/// Check if we have Full Disk Access, with an explanation when inconclusive.
 ///
 /// Probes several TCC-gated paths. A successful read on any one is proof of
 /// FDA. A PermissionDenied on any one is proof of the opposite — even if the
 /// user has nixmac listed and toggled on in System Settings, a stale TCC
 /// entry (e.g. codesign requirement mismatch after an update-in-place) can
 /// leave the grant silently inactive, and reads will fail with
-/// PermissionDenied. Only if every probe path is missing (NotFound) do we
-/// fall back to Pending.
-fn check_full_disk_access() -> PermissionStatus {
+/// PermissionDenied. If every probe path is missing (NotFound) the probe has
+/// established nothing, which is `Unknown` rather than `Pending` — the latter
+/// reads as "not granted yet", which is a claim this probe cannot make.
+///
+/// `Unknown` still fails the onboarding gate on its own; what keeps an
+/// unverifiable result from holding the gate shut is the caller dropping the
+/// row's `required` flag (see the `full-disk` arm of `check_all_permissions`).
+fn check_full_disk_access() -> (PermissionStatus, Option<String>) {
     if vite_skip_permissions_enabled() {
         debug!("VITE_NIXMAC_SKIP_PERMISSIONS is set, assuming Full Disk Access granted");
-        return PermissionStatus::Granted;
+        return (PermissionStatus::Granted, None);
     }
     if e2e_skip_permissions_enabled() {
         debug!("E2E permission skip enabled, assuming Full Disk Access granted");
-        return PermissionStatus::Granted;
+        return (PermissionStatus::Granted, None);
     }
 
     let home = match dirs::home_dir() {
         Some(h) => h,
-        None => return PermissionStatus::Unknown,
+        None => {
+            return (
+                PermissionStatus::Unknown,
+                Some(full_disk_access_inconclusive(FULL_DISK_ACCESS_NO_HOME)),
+            );
+        }
     };
 
     // (path, is_dir). Ordered by how reliably the path exists on a typical
@@ -280,7 +343,7 @@ fn check_full_disk_access() -> PermissionStatus {
         match result {
             Ok(_) => {
                 debug!("Full Disk Access granted (probe succeeded: {:?})", path);
-                return PermissionStatus::Granted;
+                return (PermissionStatus::Granted, None);
             }
             Err(e) if e.kind() == std::io::ErrorKind::PermissionDenied => {
                 debug!("Full Disk Access denied (probe blocked: {:?})", path);
@@ -291,10 +354,15 @@ fn check_full_disk_access() -> PermissionStatus {
     }
 
     if saw_denied {
-        PermissionStatus::Denied
+        (PermissionStatus::Denied, None)
     } else {
         debug!("Full Disk Access check inconclusive — no probe path existed");
-        PermissionStatus::Pending
+        (
+            PermissionStatus::Unknown,
+            Some(full_disk_access_inconclusive(
+                FULL_DISK_ACCESS_NO_PROBE_PATHS,
+            )),
+        )
     }
 }
 
@@ -321,8 +389,12 @@ fn check_admin_privileges() -> PermissionStatus {
     }
 }
 
-/// Check all permissions and return the current state
-pub fn check_all_permissions() -> PermissionsState {
+/// Check all permissions and return the current state.
+///
+/// The helper row is one run of the reconciliation function, which is also how
+/// a routine refresh converges the installed helper on this build. It must not
+/// run on the main thread — see [`helper_permission::observe`].
+pub fn check_all_permissions<R: Runtime>(app: &AppHandle<R>) -> PermissionsState {
     // Debug/test environments may not have TCC permissions granted and cannot
     // obtain them programmatically, so the skip flags satisfy the whole gate.
     if skip_permissions_enabled() {
@@ -335,15 +407,43 @@ pub fn check_all_permissions() -> PermissionsState {
 
     // Fill in each permission status and update all_required_granted on the fly
     for perm in &mut permissions {
-        perm.status = match perm.id.as_str() {
-            "desktop" => check_desktop_access(),
-            "documents" => check_documents_access(),
-            "admin" => check_admin_privileges(),
-            "full-disk" => check_full_disk_access(),
-            "app-management" => check_app_management(),
-            "privileged-helper" => check_privileged_helper(),
-            _ => PermissionStatus::Unknown,
-        };
+        // The helper row is the one row a report produces whole — its status, the
+        // sentence that tells the user what is true, and whether nixmac can still
+        // get anywhere on its own — so it is replaced rather than patched field by
+        // field, and `helper_row` stays the only place a report becomes a row.
+        if perm.id == "privileged-helper" {
+            *perm = helper_row(&check_privileged_helper(app));
+        } else {
+            perm.status = match perm.id.as_str() {
+                "desktop" => check_desktop_access(),
+                "documents" => check_documents_access(),
+                "admin" => check_admin_privileges(),
+                "full-disk" => {
+                    let (status, detail) = check_full_disk_access();
+                    // Keep the default "how to grant it" text unless the probe
+                    // has something more accurate to say.
+                    if let Some(detail) = detail {
+                        perm.instructions = Some(detail);
+                    }
+                    // A probe that could not decide must not keep the gate shut
+                    // — the same reasoning that makes app-management Recommended
+                    // rather than Required (see `app_management_permission`),
+                    // except discovered at runtime. Requiring access we cannot
+                    // verify shows a permissions banner to users who may well
+                    // have granted it. Only this row relaxes: every other
+                    // `Unknown` still blocks.
+                    if status == PermissionStatus::Unknown {
+                        perm.required = false;
+                    }
+                    status
+                }
+                "app-management" => check_app_management(),
+                other => {
+                    debug_assert!(false, "no probe for permission id {other:?}");
+                    PermissionStatus::Unknown
+                }
+            };
+        }
 
         // If this permission is required and not granted, mark all_required_granted as false
         if perm.required && perm.status != PermissionStatus::Granted {
@@ -375,7 +475,10 @@ pub fn check_all_permissions() -> PermissionsState {
 /// Request a specific permission
 /// For programmatic permissions (desktop, documents), this triggers the OS prompt
 /// For manual permissions (FDA, admin), this returns instructions
-pub fn request_permission(permission_id: &str) -> Result<Permission> {
+pub fn request_permission<R: Runtime>(
+    app: &AppHandle<R>,
+    permission_id: &str,
+) -> Result<Permission> {
     info!("Requesting permission: {}", permission_id);
 
     match permission_id {
@@ -487,17 +590,18 @@ pub fn request_permission(permission_id: &str) -> Result<Permission> {
                 .spawn();
 
             // Re-check the status
+            let (status, detail) = check_full_disk_access();
             Ok(Permission {
                 id: "full-disk".to_string(),
                 name: "Full Disk Access".to_string(),
                 description: "Required for darwin-rebuild to apply system changes".to_string(),
                 required: true,
                 can_request_programmatically: false,
-                status: check_full_disk_access(),
-                instructions: Some(
+                status,
+                instructions: Some(detail.unwrap_or_else(|| {
                     "First make sure nixmac is in your Applications folder (not running from the install disk image). Then go to System Settings → Privacy & Security → Full Disk Access and add nixmac to the list."
-                        .to_string(),
-                ),
+                        .to_string()
+                })),
             })
         }
         "app-management" => {
@@ -513,62 +617,44 @@ pub fn request_permission(permission_id: &str) -> Result<Permission> {
 
             Ok(app_management_permission(check_app_management()))
         }
-        "privileged-helper" => {
-            // SMAppService registration requires the helper binary and its
-            // LaunchDaemon plist to be embedded inside the .app bundle
-            // (Contents/MacOS/nixmac-helper and
-            // Contents/Library/LaunchDaemons/com.darkmatter.nixmac.helper.plist).
-            // Those assets are only staged by `bun run desktop:build[:local]`
-            // (externalBin in package.json). Under `tauri dev` the app runs as
-            // a bare binary from target/debug with no bundle, so
-            // registerAndReturnError: fails with an opaque "Operation not
-            // permitted". Detect that up front and surface a clear Pending
-            // state instead of propagating the OS error to the UI.
-            let bundle_present = crate::system::install_location::check_install_location()
-                .bundle_path
-                .is_some();
-
-            let (status, instructions) = if !bundle_present {
-                warn!(
-                    "privileged helper registration skipped: nixmac is not running from a .app bundle"
-                );
-                (
-                    PermissionStatus::Pending,
-                    "Build a signed .app with `bun run desktop:build:local`, drag it into /Applications, and launch it from there to install the unattended sync helper. It cannot be installed from a dev build.",
-                )
-            } else {
-                let status = match crate::privileged_helper::service::register() {
-                    Ok(status) if status.authorized => PermissionStatus::Granted,
-                    Ok(_) => {
-                        crate::privileged_helper::service::open_login_items_settings();
-                        PermissionStatus::Pending
-                    }
-                    Err(error) => {
-                        warn!("privileged helper registration failed: {error:#}");
-                        crate::privileged_helper::service::open_login_items_settings();
-                        PermissionStatus::Pending
-                    }
-                };
-                (
-                    status,
-                    "Approve nixmac in System Settings → General → Login Items & Extensions if macOS asks for background item approval.",
-                )
-            };
-            Ok(privileged_helper_permission(status, instructions))
-        }
+        // Grant: record the decision, then reconcile under it. First-time
+        // registration and repairing a half-finished one are the same step, and
+        // the write is idempotent. Grant is the only action that may open Login
+        // Items; `darwin.helperGrant` is this same action.
+        "privileged-helper" => Ok(helper_row(&helper_permission::grant(app))),
         _ => Err(anyhow::anyhow!("Unknown permission: {}", permission_id)),
     }
 }
 
-fn check_privileged_helper() -> PermissionStatus {
-    let status = crate::privileged_helper::service::status();
-    if status.authorized {
-        PermissionStatus::Granted
-    } else if status.available {
-        PermissionStatus::Pending
-    } else {
-        PermissionStatus::Unknown
-    }
+/// Status of the unattended sync helper: one run of the reconciliation
+/// function, as a permission row.
+///
+/// Only a helper of this build answering an authenticated `Status` is granted.
+/// An `SMAppService` registration alone proves nothing — the approval outlives
+/// the binary it was granted for — and neither does a socket. Everything else is
+/// a report, and the report is what tells the user what to do: approve in Login
+/// Items, move the app to /Applications, restart the app, or wait out a running
+/// activation.
+fn check_privileged_helper<R: Runtime>(app: &AppHandle<R>) -> Reconciled {
+    let report = helper_permission::observe(app);
+    // A refresh is how a user comes back to this — opening the panel, or
+    // pressing Check again — and one run is usually not enough: the platform
+    // refuses a register for about a second after any unregister, so the run
+    // that repairs a helper typically reports a failure and needs a successor.
+    // Starting the loop here means the visit converges instead of handing back a
+    // scary report. A loop already running ignores this.
+    helper_permission::start_converging(app);
+    report
+}
+
+/// One report as the permission row it produces.
+pub(crate) fn helper_row(report: &Reconciled) -> Permission {
+    let (status, detail) = helper_permission::row(report);
+    privileged_helper_permission(
+        status,
+        &detail,
+        helper_permission::can_request_programmatically(report),
+    )
 }
 
 /// Best-effort App Management status.
@@ -585,6 +671,29 @@ fn check_app_management() -> PermissionStatus {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::privileged_helper::reconcile::Reconciled;
+
+    /// The row a report produces has to carry the report's own answer to "is
+    /// System Settings where the user finishes this", or the panel offers the
+    /// wrong action: an approval waiting in Login Items would get a button that
+    /// hands the helper back instead of one that opens the pane. Asserted through
+    /// `helper_row` rather than on the predicate alone, because the wiring between
+    /// them is what the UI actually reads and nothing else pins it.
+    #[test]
+    fn the_row_takes_its_deep_link_from_the_report() {
+        assert!(!helper_row(&Reconciled::PendingApproval).can_request_programmatically);
+        assert!(helper_row(&Reconciled::AtThisBuild).can_request_programmatically);
+        assert!(helper_row(&Reconciled::NoHelper).can_request_programmatically);
+    }
+
+    /// A bare app handle. The skip flags below short-circuit before anything
+    /// reads app state, which is what keeps these tests from probing the real
+    /// helper.
+    fn mock_app() -> tauri::App<tauri::test::MockRuntime> {
+        tauri::test::mock_builder()
+            .build(tauri::test::mock_context(tauri::test::noop_assets()))
+            .expect("mock app builds")
+    }
 
     #[cfg(debug_assertions)]
     #[test]
@@ -658,6 +767,24 @@ mod tests {
     }
 
     #[test]
+    fn inconclusive_full_disk_access_is_unknown_and_explains_itself() {
+        // Only meaningful when the probe is actually inconclusive; on a Mac
+        // with Safari or Mail the probe reaches a verdict and this is skipped.
+        // Either inconclusive path must explain itself — which one ran depends
+        // on the machine, so assert the property rather than the wording.
+        let (status, detail) = check_full_disk_access();
+        if status == PermissionStatus::Unknown {
+            let detail = detail.expect("an inconclusive probe must explain itself");
+            assert!(detail.starts_with(FULL_DISK_ACCESS_INCONCLUSIVE_PREFIX));
+        } else {
+            assert!(matches!(
+                status,
+                PermissionStatus::Granted | PermissionStatus::Denied
+            ));
+        }
+    }
+
+    #[test]
     fn app_management_is_not_inferred_from_full_disk_access() {
         assert_eq!(check_app_management(), PermissionStatus::Pending);
     }
@@ -709,7 +836,8 @@ mod tests {
         unsafe { std::env::remove_var("NIXMAC_SKIP_PERMISSIONS") };
         unsafe { std::env::set_var("VITE_NIXMAC_SKIP_PERMISSIONS", "true") };
 
-        let state = check_all_permissions();
+        let app = mock_app();
+        let state = check_all_permissions(app.handle());
 
         assert!(state.all_required_granted);
         assert!(
@@ -732,7 +860,8 @@ mod tests {
         unsafe { std::env::set_var("NIXMAC_SKIP_PERMISSIONS", "true") };
         unsafe { std::env::remove_var("VITE_NIXMAC_SKIP_PERMISSIONS") };
 
-        let state = check_all_permissions();
+        let app = mock_app();
+        let state = check_all_permissions(app.handle());
 
         assert!(state.all_required_granted);
         assert!(

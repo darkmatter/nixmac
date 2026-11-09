@@ -52,9 +52,11 @@ pub struct NixmacEnvSettings {
     )]
     pub sentry_dsn: String,
 
+    /// No `build_embed`: this is the selector for which profile gets embedded, so
+    /// it resolves from the process environment, then from that profile's own
+    /// `NIXMAC_ENV` key — never from a separate embedded copy of the selector.
     #[config(
-        default = "prod",
-        build_embed = true,
+        default = "production",
         env_var = "NIXMAC_ENV",
         label = "Deployment environment"
     )]
@@ -90,10 +92,10 @@ pub struct NixmacEnvSettings {
     pub debug_skip_restore_all: bool,
 
     #[config(
-        default = "",
+        default = "retention",
         env_var = "NIXMAC_EVOLUTION_MEMORY_STRATEGY",
         label = "Evolution memory strategy",
-        help = "One of: none, retention."
+        help = "One of: none, retention. Default retention expires stale tool results so the context window does not fill until only a handful of output tokens remain."
     )]
     pub evolution_memory_strategy: String,
 

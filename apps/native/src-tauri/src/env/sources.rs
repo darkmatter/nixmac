@@ -16,7 +16,6 @@ pub fn build_embed(name: &str) -> Option<String> {
         "SENTRY_DSN" => option_env!("SENTRY_DSN").map(str::to_string),
         "VITE_SERVER_URL" => option_env!("VITE_SERVER_URL").map(str::to_string),
         "SUBMITTED_FEEDBACK_DSN" => option_env!("SUBMITTED_FEEDBACK_DSN").map(str::to_string),
-        "NIXMAC_ENV" => option_env!("NIXMAC_ENV").map(str::to_string),
         "NIXMAC_VERSION" => option_env!("NIXMAC_VERSION").map(str::to_string),
         _ => None,
     };
@@ -25,8 +24,9 @@ pub fn build_embed(name: &str) -> Option<String> {
 }
 
 /// JSON profile from `apps/native/env.{development,release,e2e}.json`, embedded at compile time.
-pub fn build_profile() -> Option<serde_json::Value> {
-    option_env!("NIXMAC_ENV_PROFILE_JSON").and_then(|raw| serde_json::from_str(raw).ok())
+pub fn build_profile() -> serde_json::Value {
+    serde_json::from_str(env!("NIXMAC_ENV_PROFILE_JSON"))
+        .expect("NIXMAC_ENV_PROFILE_JSON is minified by build.rs and must parse")
 }
 
 #[cfg(test)]
@@ -35,8 +35,7 @@ mod tests {
 
     #[test]
     fn embedded_build_profile_parses_and_uses_env_var_keys() {
-        let profile =
-            build_profile().expect("NIXMAC_ENV_PROFILE_JSON should parse at compile time");
+        let profile = build_profile();
         assert_eq!(
             profile
                 .get("VITE_SERVER_URL")

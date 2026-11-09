@@ -28,6 +28,7 @@ export type UiStateValues = {
   settingsActiveTab: SettingsTab | null;
   showHistory: boolean;
   showFilesystem: boolean;
+  showSecretsManagement: boolean;
   filesystemTargetSection: string | null;
   feedbackOpen: boolean;
   feedbackTypeOverride: FeedbackType | null;

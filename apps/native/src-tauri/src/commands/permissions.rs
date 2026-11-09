@@ -26,8 +26,9 @@ pub async fn refresh_permissions(app: AppHandle) -> Result<(), String> {
 /// For manual permissions (full-disk), this opens System Settings.
 #[tauri::command]
 pub async fn permissions_request(
+    app: AppHandle,
     permission_id: String,
 ) -> Result<shared_types::Permission, String> {
-    permissions::request_permission(&permission_id)
+    permissions::request_permission(&app, &permission_id)
         .map_err(|e| capture_err("permissions_request", e))
 }

@@ -1,0 +1,22 @@
+{
+  "preferences": {
+    "configDir": "/tmp/nixmac-desktop-missing-config",
+    "repoRoot": "/tmp/nixmac-desktop-missing-config",
+    "hostAttr": null,
+    "sendDiagnostics": false,
+    "diagnosticsNoticeAcknowledged": true,
+    "scanHomebrewOnStartup": false,
+    "autoSummarizeOnFocus": false
+  },
+  "onboarding": {
+    "completedAt": null,
+    "lastBuildAt": 1751967600,
+    "macScannedAt": 1751967500,
+    "loginDecided": true,
+    "provisionalConfigDir": null
+  },
+  "evolve": {},
+  "build": { "buildState": {} },
+  "legacy-settings": { "globalPreferencesMigratedV1": true },
+  "query-cache": {}
+}

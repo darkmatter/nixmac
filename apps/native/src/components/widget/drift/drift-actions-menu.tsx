@@ -15,11 +15,14 @@ import { uiActions, useViewModel } from "@nixmac/state";
 import { GitCommitHorizontal, MoreVertical, Sparkles, Trash2 } from "lucide-react";
 
 /**
- * Per-file actions shown on the drift rows. The hidden-until-hover trigger
- * expects the row to be a `group`. "Refine with AI" only applies to manual
- * drift; commit/discard operate on the single file via the git bindings.
+ * Actions shown on the drift rows. The hidden-until-hover trigger expects the
+ * row to be a `group`. "Refine with AI" only applies to manual drift.
+ *
+ * Commit/discard granularity follows the row: pass `hash` (a per-change row's
+ * `Change.hash`) to operate on that single hunk via the git bindings, or omit
+ * it for file-level rows to commit/discard the whole file.
  */
-export function DriftActionsMenu({ filename }: { filename: string }) {
+export function DriftActionsMenu({ filename, hash }: { filename: string; hash?: string }) {
   const { evolveFromManual } = useEvolve();
   const evolutionId = useViewModel((s) => s.evolve?.evolutionId ?? null);
   const isManualDrift = evolutionId === null;
@@ -27,6 +30,23 @@ export function DriftActionsMenu({ filename }: { filename: string }) {
 
   const reportError = (error: unknown) =>
     uiActions.setError((error as Error)?.message ?? String(error));
+
+  const commitThisChange = () => {
+    if (hash === undefined) {
+      client.git.commitFile({ filename, message: `Update ${shortName}` }).catch(reportError);
+    } else {
+      client.git.commitChange({ filename, hash, message: `Update ${shortName}` }).catch(reportError);
+    }
+  };
+
+  const discardThisChange = () => {
+    if (hash === undefined) {
+      client.git.discardFile({ filename }).catch(reportError);
+    } else {
+      // Scoped to this row's hunk, so sibling changes to the same file survive.
+      client.git.discardChange({ filename, hash }).catch(reportError);
+    }
+  };
 
   return (
     <DropdownMenu>
@@ -54,20 +74,11 @@ export function DriftActionsMenu({ filename }: { filename: string }) {
             <DropdownMenuSeparator />
           </>
         )}
-        <DropdownMenuItem
-          onSelect={() => {
-            client.git.commitFile({ filename, message: `Update ${shortName}` }).catch(reportError);
-          }}
-        >
+        <DropdownMenuItem onSelect={commitThisChange}>
           <GitCommitHorizontal />
           Commit only this
         </DropdownMenuItem>
-        <DropdownMenuItem
-          className="text-destructive"
-          onSelect={() => {
-            client.git.discardFile({ filename }).catch(reportError);
-          }}
-        >
+        <DropdownMenuItem className="text-destructive" onSelect={discardThisChange}>
           <Trash2 />
           Discard change
         </DropdownMenuItem>

@@ -1,0 +1,33 @@
+[package]
+name = "pi-iso"
+version = "17.1.2"
+edition = "2024"
+license = "MIT"
+authors = ["Can Boluk"]
+repository = "https://github.com/can1357/oh-my-pi"
+description = "Cross-platform CoW isolation backends (vendored from oh-my-pi)"
+
+# Vendored: do not inherit nixmac workspace deny-level clippy.
+
+[dependencies]
+async-trait = "0.1"
+similar = "3.1.0"
+tokio = { version = "1", features = ["full"] }
+
+[target.'cfg(unix)'.dependencies]
+libc = "0.2"
+
+[target.'cfg(target_os = "linux")'.dependencies]
+parking_lot = "0.12.5"
+
+[target.'cfg(windows)'.dependencies]
+parking_lot = "0.12.5"
+windows-sys = { version = "0.61", features = [
+  "Win32_Foundation",
+  "Win32_Storage_FileSystem",
+  "Win32_Storage_ProjectedFileSystem",
+  "Win32_System_Com",
+  "Win32_System_LibraryLoader",
+  "Win32_System_IO",
+  "Win32_System_Ioctl",
+] }

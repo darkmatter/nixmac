@@ -81,7 +81,8 @@ email: string }
  */
 export type AuthStatus = { 
 /**
- * Whether a usable account credential is stored on this device.
+ * Whether any usable account credential is stored on this device. This may
+ * be either a legacy sync credential or the web device API key.
  */
 signedIn: boolean; 
 /**
@@ -97,12 +98,13 @@ keyId: string | null;
  */
 serverUrl: string; 
 /**
- * Whether this device can call server-brokered GitHub endpoints (has a
- * minted Better Auth api-key for the web origin).
+ * Whether this device can authenticate with the web origin using its
+ * stored Better Auth device API key. Hosted models and brokered GitHub
+ * requests share this credential.
  */
-githubReady: boolean; 
+webApiAuthReady: boolean;
 /**
- * The web-origin account used for GitHub, when `github_ready` is true.
+ * The web-origin account associated with the device API key, when known.
  */
 webAccount: AuthAccount | null }
 
@@ -130,12 +132,6 @@ passed: boolean;
 output: string }
 
 export type Change = { id: number; hash: string; filename: string; diff: string; lineCount: number; createdAt: number; ownSummaryId: number }
-
-/**
- * Groups Changes for a commit→base_commit pair. `commit_id` is NULL for speculative
- * (uncommitted) changesets. Membership is stored in the `set_changes` join table.
- */
-export type ChangeSet = { id: number; commitId: number | null; baseCommitId: number; commitMessage: string | null; generatedCommitMessage: string | null; createdAt: number; evolutionId: number | null }
 
 export type ChangeSummary = { id: number; title: string; description: string; 
 /**
@@ -218,8 +214,6 @@ codex: boolean;
  * Whether the OpenCode CLI is installed.
  */
 opencode: boolean }
-
-export type Commit = { id: number; hash: string; treeHash: string; message: string | null; createdAt: number }
 
 /**
  * Result of a successful `git_commit` command. State mirrors (git, evolve,
@@ -384,6 +378,42 @@ error: boolean | null;
  * Error category when `error` or `complete && !success` is set.
  */
 error_type: RebuildErrorType | null }
+
+/**
+ * Whether decryption is available for this specific process or not via its private identity.
+ */
+export type DecryptionCapability = "available" | "unavailable" | "unknown"
+
+/**
+ * A locally discoverable private identity source.
+ */
+export type DecryptionIdentity = { kind: DecryptionIdentityKind; locality: DecryptionIdentityLocality; path: string; available: boolean; 
+/**
+ * Public recipient derived without returning private key material.
+ */
+publicKeys: string[] }
+
+/**
+ * Private identity format. The identity material itself is never returned.
+ */
+export type DecryptionIdentityKind = "ageKeyFile" | "sshKeyPath"
+
+/**
+ * Where a private decryption identity was discovered.
+ */
+export type DecryptionIdentityLocality = 
+/**
+ * Declared by the evaluated nix-darwin configuration.
+ */
+"configuration" | 
+/**
+ * Supplied to the running nixmac process through its environment.
+ */
+"process" | 
+/**
+ * Found at a conventional path on this machine.
+ */
+"machine"
 
 export type EnumVariant = { value: string; label: string }
 
@@ -1129,6 +1159,11 @@ export type FileEditAction =
 { setAttrs: { path: string; attrs: Partial<{ [key in string]: JsonValue }> } }
 
 /**
+ * How nixmac handles updates available from the configuration Git repository.
+ */
+export type GitAutoUpdate = "off" | "confirm" | "automatic"
+
+/**
  * Individual file status parsed from diff headers.
  */
 export type GitFileStatus = { 
@@ -1156,7 +1191,7 @@ externalBuildDetected: boolean;
 /**
  * True when the configured upstream contains a fast-forward update.
  */
-upstreamUpdateAvailable: boolean;
+upstreamUpdateAvailable: boolean; 
 /**
  * True when a rebuild is needed to bring the system up to date with the current working tree.
  */
@@ -1365,7 +1400,7 @@ summaryModel: string | null;
  * Remembered summary model per provider; a missing entry means the
  * provider default is used. Never stores `""`.
  */
-summaryModels: Partial<{ [key in string]: string }>; ollamaApiBaseUrl: string | null; openaiCompatibleApiBaseUrl: string | null; confirmBuild: boolean; confirmClear: boolean; confirmRollback: boolean; autoSummarizeOnFocus: boolean; scanHomebrewOnStartup: boolean; defaultToDiffTab: boolean; experimentalSpinningMascot: boolean; experimentalStreamingEvolve: boolean; developerMode: boolean; pinnedVersion: string | null; updateChannel: UpdateChannel; featureFlagOverrides: Partial<{ [key in string]: string }> | null; 
+summaryModels: Partial<{ [key in string]: string }>; ollamaApiBaseUrl: string | null; openaiCompatibleApiBaseUrl: string | null; confirmBuild: boolean; confirmClear: boolean; confirmRollback: boolean; autoSummarizeOnFocus: boolean; scanHomebrewOnStartup: boolean; defaultToDiffTab: boolean; experimentalSpinningMascot: boolean; experimentalStreamingEvolve: boolean; developerMode: boolean; pinnedVersion: string | null; updateChannel: UpdateChannel; gitAutoUpdate: GitAutoUpdate; featureFlagOverrides: Partial<{ [key in string]: string }> | null; 
 /**
  * Root of an import clone parked on the "which flake dir?" choice
  * (`NeedsFlakeDirChoice`). Recorded so an abandoned choice can be
@@ -1377,7 +1412,26 @@ pendingImportDir: string | null;
 /**
  * Whether or not to auto-format Nix files when making changes to the flakes.
  */
-autoFormatNixFiles: boolean }
+autoFormatNixFiles: boolean; 
+/**
+ * Standing decision about the privileged helper. Read by the helper
+ * reconciliation and by apply; decided only by the grant and disable
+ * actions, which is why it is not writable via `UiPrefsUpdate` and is held
+ * out of settings export/import. `state::preferences` documents which
+ * writers can reach it.
+ */
+helperPreference: HelperPreference }
+
+/**
+ * The user's standing decision about the privileged helper.
+ * 
+ * Tri-state on purpose. `Unset` means the user never decided — a fresh install,
+ * or one predating the helper's install/replace/remove contract — and is what
+ * lets an existing registration be adopted as an earlier opt-in without
+ * overriding an explicit `Disabled`. It selects a goal and authorizes nothing
+ * else: every trust or termination decision is taken from live observation.
+ */
+export type HelperPreference = "unset" | "granted" | "disabled"
 
 /**
  * A commit entry combining git log data, tag-derived flags, optional DB metadata, and raw diff changes.
@@ -1411,10 +1465,6 @@ isExternal: boolean;
  * Number of files changed in this commit.
  */
 fileCount: number; 
-/**
- * Matching persisted commit row, if one exists.
- */
-commit: Commit | null; 
 /**
  * Semantic summaries for this commit's changes.
  */
@@ -1813,7 +1863,14 @@ description: string;
  */
 required: boolean; 
 /**
- * Whether the app can trigger the system prompt directly.
+ * Whether the app can trigger the system prompt directly. False means the
+ * row's action can only deep-link into System Settings and wait for the
+ * user, which is what the UI renders it as.
+ * 
+ * Fixed per row for the TCC permissions, but not a capability in general:
+ * the unattended sync helper reports it per observation, and it is false
+ * only while macOS holds the registration pending approval in Login Items.
+ * Read it as "is System Settings where the user finishes this, right now".
  */
 canRequestProgrammatically: boolean; 
 /**
@@ -1942,6 +1999,10 @@ export type RebuildErrorType =
  */
 "etc_clobber" | 
 /**
+ * The apply refused to start the activation and made no changes.
+ */
+"activation_refused" | 
+/**
  * Fallback for uncategorized failures.
  */
 "generic_error"
@@ -1974,6 +2035,28 @@ errorMessage: string | null;
  * Whether the failure left the system untouched.
  */
 systemUntouched: boolean | null }
+
+/**
+ * Public-key format used by a secret recipient.
+ */
+export type RecipientKeyType = "age" | "ssh" | "pgp" | "unknown"
+
+/**
+ * Kind of recipient used for managing secrets.
+ */
+export type RecipientKind = "host" | "user" | "unknown"
+
+/**
+ * A repository configuration source that registers a recipient.
+ * Keeping the backend alongside the path matters because the same public key
+ * can be registered independently for SOPS and agenix.
+ */
+export type RecipientRegistration = { backend: SecretBackend; file: string }
+
+/**
+ * Where the recipient's key material originates.
+ */
+export type RecipientSource = "sshHostKey" | "sshIdentity" | "ageKeyFile" | "pasted" | "github" | "yubikey" | "secureEnclave" | "repository" | "unknown"
 
 /**
  * A recommended prompt based on the user's current macOS settings.
@@ -2023,6 +2106,35 @@ backtrace: string | null;
  */
 timestamp: string }
 
+/**
+ * Secret backend used for managing secrets.
+ */
+export type SecretBackend = "sops" | "agenix"
+
+/**
+ * One encrypted secret entry managed in the nix config repo.
+ */
+export type SecretEntry = { id: string; name: string; backend: SecretBackend; file: string; publicRecipients: string[]; publicRecipientsResolved: boolean; recipientIds: string[]; decryptionCapability: DecryptionCapability; sopsKey: string | null }
+
+export type SecretRecipient = { id: string; label: string; kind: RecipientKind; device: string; fingerprint: string; publicKey: string; keyType: RecipientKeyType; source: RecipientSource; inUse: boolean; registrations: RecipientRegistration[] }
+
+export type SecretsVault = { primaryDecryptionIdentityId: string | null; entries: SecretEntry[]; recipients: SecretRecipient[]; decryptionIdentities: DecryptionIdentity[] }
+
+/**
+ * Backend-owned lifecycle for the derived secrets vault.
+ * The vault is potentially very expensive to derive (it evaluates the configured flake), so
+ * Rust refreshes it when its inputs change and the frontend only mirrors this
+ * snapshot. `vault` is cleared while loading to avoid showing data derived
+ * from a previous config directory or host.
+ */
+export type SecretsVaultState = { vault: SecretsVault | null; 
+/**
+ * Whether a client has requested the vault at least once. Dependency
+ * changes refresh only after activation, avoiding Nix evaluation at app
+ * startup for users who never open secrets management.
+ */
+activated: boolean; loading: boolean; error: string | null }
+
 export type SemanticChangeGroup = { 
 /**
  * Shared summary describing the grouped changes.
@@ -2063,34 +2175,6 @@ dir: string;
  * True when the selected directory differs from the previous one.
  */
 changed: boolean }
-
-export type SummarizedChange = { 
-/**
- * Raw change row.
- */
-change: Change; 
-/**
- * Summary attached directly to this change.
- */
-ownSummary: ChangeSummary | null; 
-/**
- * Summary inherited from this change's group.
- */
-groupSummary: ChangeSummary | null }
-
-export type SummarizedChangeSet = { 
-/**
- * Change set represented by this response.
- */
-changeSet: ChangeSet; 
-/**
- * Changes in the set with their available summaries.
- */
-changes: SummarizedChange[]; 
-/**
- * Change hashes expected in the set but missing from the database.
- */
-missedHashes: string[] }
 
 /**
  * Remote sync state for the current account, returned by `sync_status`.
@@ -2331,6 +2415,10 @@ pinnedVersion: string | null;
  */
 updateChannel: UpdateChannel; 
 /**
+ * How updates from the configuration Git repository are handled.
+ */
+gitAutoUpdate: GitAutoUpdate; 
+/**
  * Developer-only feature flag overrides (flag key → variant string).
  * `None` or missing key = use PostHog default.
  */
@@ -2450,6 +2538,10 @@ pinnedVersion?: string | null;
  */
 updateChannel: UpdateChannel | null; 
 /**
+ * Git repository auto-update preference update.
+ */
+gitAutoUpdate: GitAutoUpdate | null; 
+/**
  * `None` -> field not sent; `Some(None)` -> clear all overrides;
  * `Some(Some(map))` -> replace overrides with `map`.
  */
@@ -2488,3 +2580,4 @@ version: string;
  * Release notes from the channel manifest, when available.
  */
 notes: string | null }
+

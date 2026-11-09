@@ -1,0 +1,644 @@
+name: Publish Computer Use E2E Terminal Report
+run-name: Publish E2E report · PR #${{ inputs.pull_request }} · ${{ inputs.request_id }}
+
+on:
+  workflow_dispatch:
+    inputs:
+      evidence_dir:
+        description: "Absolute evidence directory on the configured remote Mac"
+        required: true
+        type: string
+      expected_sha:
+        description: "Exact 40-character nixmac app SHA exercised by CuaDriver"
+        required: true
+        type: string
+      pull_request:
+        description: "Pull request number"
+        required: true
+        type: string
+      request_id:
+        description: "Buzz/Centaur request ID"
+        required: true
+        type: string
+      report_tool_sha:
+        description: "Exact nixmac SHA containing the report renderer to execute"
+        required: true
+        type: string
+
+permissions:
+  actions: read
+  contents: read
+  pull-requests: read
+
+jobs:
+  render:
+    name: Validate and render terminal evidence
+    runs-on: arc
+    timeout-minutes: 30
+    outputs:
+      verdict: ${{ steps.validate.outputs.verdict }}
+      result_label: ${{ steps.validate.outputs.result_label }}
+    env:
+      REMOTE_HOST: ${{ secrets.NIXMAC_E2E_REMOTE_HOST }}
+      REMOTE_USER: ${{ secrets.NIXMAC_E2E_REMOTE_USER }}
+      REMOTE_SSH_KEY: ${{ secrets.NIXMAC_E2E_REMOTE_SSH_KEY }}
+      REMOTE_KNOWN_HOSTS: ${{ secrets.NIXMAC_E2E_REMOTE_KNOWN_HOSTS }}
+    steps:
+      - name: Checkout protected report tool
+        uses: actions/checkout@v6
+        with:
+          ref: main
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Verify and select trusted report tool revision
+        shell: bash
+        env:
+          REPORT_TOOL_SHA: ${{ inputs.report_tool_sha }}
+        run: |
+          set -euo pipefail
+          [[ "$REPORT_TOOL_SHA" =~ ^[a-f0-9]{40}$ ]] || {
+            echo "report_tool_sha must be a full lowercase git SHA" >&2
+            exit 1
+          }
+          trusted_main_sha="$(git rev-parse HEAD)"
+          [[ "$REPORT_TOOL_SHA" == "$trusted_main_sha" ]] || {
+            echo "report_tool_sha must equal the current protected main revision" >&2
+            exit 1
+          }
+          git checkout -q --detach "$REPORT_TOOL_SHA"
+          [[ "$(git rev-parse HEAD)" == "$REPORT_TOOL_SHA" ]]
+
+      - name: Prepare evidence transport and media validation
+        shell: bash
+        run: |
+          set -euo pipefail
+          missing=()
+          [[ -n "$REMOTE_HOST" ]] || missing+=("NIXMAC_E2E_REMOTE_HOST")
+          [[ -n "$REMOTE_USER" ]] || missing+=("NIXMAC_E2E_REMOTE_USER")
+          [[ -n "$REMOTE_SSH_KEY" ]] || missing+=("NIXMAC_E2E_REMOTE_SSH_KEY")
+          [[ -n "$REMOTE_KNOWN_HOSTS" ]] || missing+=("NIXMAC_E2E_REMOTE_KNOWN_HOSTS")
+          if [[ "${#missing[@]}" -ne 0 ]]; then
+            echo "Missing remote evidence secrets: ${missing[*]}" >&2
+            exit 1
+          fi
+          [[ "$REMOTE_USER" =~ ^[a-z_][a-z0-9_-]{0,31}$ ]] || {
+            echo "Configured remote user has an invalid format" >&2
+            exit 1
+          }
+
+          sudo apt-get update
+          sudo apt-get install -y ffmpeg tesseract-ocr
+          for command_name in git jq node realpath ssh ffprobe ffmpeg sha256sum tesseract; do
+            command -v "$command_name" >/dev/null || {
+              echo "Required report command is unavailable: $command_name" >&2
+              exit 1
+            }
+          done
+
+          install -d -m 700 "$HOME/.ssh"
+          printf '%s\n' "$REMOTE_SSH_KEY" > "$HOME/.ssh/nixmac-e2e"
+          chmod 600 "$HOME/.ssh/nixmac-e2e"
+          printf '%s\n' "$REMOTE_KNOWN_HOSTS" > "$HOME/.ssh/known_hosts"
+          chmod 644 "$HOME/.ssh/known_hosts"
+          ssh-keygen -F "$REMOTE_HOST" -f "$HOME/.ssh/known_hosts" >/dev/null || {
+            echo "Configured known_hosts does not contain the remote evidence host" >&2
+            exit 1
+          }
+
+      - name: Fetch, validate, and render terminal evidence
+        id: validate
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          EVIDENCE_DIR_INPUT: ${{ inputs.evidence_dir }}
+          EXPECTED_SHA: ${{ inputs.expected_sha }}
+          PR_NUMBER: ${{ inputs.pull_request }}
+          REQUEST_ID: ${{ inputs.request_id }}
+          REPORT_TOOL_SHA: ${{ inputs.report_tool_sha }}
+          OPENROUTER_API_KEY: ${{ secrets.NIXMAC_E2E_OPENROUTER_API_KEY }}
+          OPENROUTER_MODEL: ${{ vars.NIXMAC_E2E_OPENROUTER_MODEL }}
+        run: |
+          set -euo pipefail
+          [[ "$EXPECTED_SHA" =~ ^[a-f0-9]{40}$ ]] || {
+            echo "expected_sha must be a full lowercase git SHA" >&2
+            exit 1
+          }
+          [[ "$REPORT_TOOL_SHA" =~ ^[a-f0-9]{40}$ ]] || {
+            echo "report_tool_sha must be a full lowercase git SHA" >&2
+            exit 1
+          }
+          [[ "$PR_NUMBER" =~ ^[1-9][0-9]*$ ]] || {
+            echo "pull_request must be a positive integer" >&2
+            exit 1
+          }
+          [[ "$REQUEST_ID" =~ ^[a-z0-9][a-z0-9._:-]{0,79}$ ]] || {
+            echo "request_id has an invalid format" >&2
+            exit 1
+          }
+
+          checked_out_sha="$(git rev-parse HEAD)"
+          [[ "$checked_out_sha" == "$REPORT_TOOL_SHA" ]] || {
+            echo "Pinned report tool mismatch: expected $REPORT_TOOL_SHA, got $checked_out_sha" >&2
+            exit 1
+          }
+
+          expected_prefix="/Users/${REMOTE_USER}/nixmac-e2e-evidence/${EXPECTED_SHA}/"
+          [[ "$EVIDENCE_DIR_INPUT" == "$expected_prefix"* ]] || {
+            echo "Evidence directory is outside the exact-SHA evidence boundary" >&2
+            exit 1
+          }
+          relative_run="${EVIDENCE_DIR_INPUT#"$expected_prefix"}"
+          [[ "$relative_run" =~ ^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{6}Z$ ]] || {
+            echo "Evidence directory must be one run directly beneath the exact SHA" >&2
+            exit 1
+          }
+
+          declared_pr="$RUNNER_TEMP/declared-pr-${PR_NUMBER}.json"
+          gh api "repos/${GITHUB_REPOSITORY}/pulls/${PR_NUMBER}" > "$declared_pr"
+          pr_head_sha="$(jq -r '.head.sha' "$declared_pr")"
+          pr_merge_sha="$(jq -r '.merge_commit_sha // empty' "$declared_pr")"
+          expected_sha_belongs_to_pr=false
+          if [[ "$EXPECTED_SHA" == "$pr_head_sha" || "$EXPECTED_SHA" == "$pr_merge_sha" ]]; then
+            expected_sha_belongs_to_pr=true
+          else
+            declared_pr_commits="$RUNNER_TEMP/declared-pr-${PR_NUMBER}-commits.json"
+            gh api --paginate --slurp \
+              "repos/${GITHUB_REPOSITORY}/pulls/${PR_NUMBER}/commits?per_page=100" \
+              > "$declared_pr_commits"
+            if jq -e --arg sha "$EXPECTED_SHA" 'any(.[][]; .sha == $sha)' \
+              "$declared_pr_commits" >/dev/null; then
+              expected_sha_belongs_to_pr=true
+            else
+              associated_pulls="$RUNNER_TEMP/expected-sha-associated-pulls.json"
+              gh api -H "Accept: application/vnd.github+json" \
+                "repos/${GITHUB_REPOSITORY}/commits/${EXPECTED_SHA}/pulls?per_page=100" \
+                > "$associated_pulls"
+              if jq -e --argjson pr "$PR_NUMBER" 'any(.[]; .number == $pr)' \
+                "$associated_pulls" >/dev/null; then
+                expected_sha_belongs_to_pr=true
+              fi
+            fi
+          fi
+          [[ "$expected_sha_belongs_to_pr" == "true" ]] || {
+            echo "expected_sha is not associated with the declared pull request" >&2
+            exit 1
+          }
+
+          ssh_common=(
+            -i "$HOME/.ssh/nixmac-e2e"
+            -o BatchMode=yes
+            -o StrictHostKeyChecking=yes
+            -o UserKnownHostsFile="$HOME/.ssh/known_hosts"
+          )
+          ssh_dest="${REMOTE_USER}@${REMOTE_HOST}"
+          remote_file_size() {
+            local remote_path="$1"
+            local remote_command
+            local size
+            printf -v remote_command 'stat -f %%z %q' "$remote_path"
+            size="$(ssh "${ssh_common[@]}" -- "$ssh_dest" "$remote_command")"
+            [[ "$size" =~ ^[0-9]+$ ]] || {
+              echo "Remote evidence size is not a non-negative integer: $remote_path" >&2
+              return 1
+            }
+            printf '%s\n' "$size"
+          }
+          bounded_remote_copy() {
+            local remote_path="$1"
+            local destination="$2"
+            local max_bytes="$3"
+            local remote_command
+            printf -v remote_command 'cat %q' "$remote_path"
+            ssh "${ssh_common[@]}" -- "$ssh_dest" "$remote_command" |
+              python3 ops/scripts/e2e/bounded-stream-copy.py "$destination" "$max_bytes"
+          }
+          local_evidence="$RUNNER_TEMP/terminal-evidence-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
+          mkdir -p "$local_evidence"
+          remote_manifest="${EVIDENCE_DIR_INPUT}/terminal-result.v2.json"
+          remote_manifest_size="$(remote_file_size "$remote_manifest")"
+          (( remote_manifest_size <= 262144 )) || {
+            echo "Remote terminal-result.v2.json exceeds 256 KiB" >&2
+            exit 1
+          }
+          bounded_remote_copy \
+            "$remote_manifest" \
+            "$local_evidence/terminal-result.remote.json" \
+            262144
+
+          jq -e \
+            --arg sha "$EXPECTED_SHA" \
+            --argjson pr "$PR_NUMBER" \
+            --arg request "$REQUEST_ID" \
+            --arg tool "$REPORT_TOOL_SHA" \
+            --arg evidence "$EVIDENCE_DIR_INPUT" \
+            '.schemaVersion == "nixmac.e2e.terminal-result.v2"
+              and .testedArtifact.headSha == $sha
+              and .request.pullRequest.number == $pr
+              and .request.id == $request
+              and .reportTool.repository == "darkmatter/nixmac"
+              and .reportTool.sha == $tool
+              and .evidence.root == $evidence
+              and (.provider.kind == "scripted-mock" or .provider.kind == "real")
+              and (.provider.endpointClass == "loopback" or .provider.endpointClass == "remote")
+              and (.provider.label | type == "string" and length > 0)
+              and (.provider.model | type == "string" and length > 0)' \
+            "$local_evidence/terminal-result.remote.json" >/dev/null
+
+          actions_run_id="$(jq -r '.testedArtifact.actionsRunId' "$local_evidence/terminal-result.remote.json")"
+          artifact_id="$(jq -r '.testedArtifact.artifactId' "$local_evidence/terminal-result.remote.json")"
+          artifact_name="$(jq -r '.testedArtifact.artifactName' "$local_evidence/terminal-result.remote.json")"
+          expected_archive_sha="$(jq -r '.testedArtifact.archiveSha256' "$local_evidence/terminal-result.remote.json")"
+          expected_app_sha="$(jq -r '.testedArtifact.appSha256' "$local_evidence/terminal-result.remote.json")"
+          run_json="$RUNNER_TEMP/tested-actions-run.json"
+          artifact_json="$RUNNER_TEMP/tested-actions-artifact.json"
+          artifact_archive_limit=268435456
+          artifact_expansion_limit=1073741824
+          gh api "repos/${GITHUB_REPOSITORY}/actions/runs/${actions_run_id}" > "$run_json"
+          jq -e --arg sha "$EXPECTED_SHA" \
+            '.head_sha == $sha
+              and .repository.full_name == "darkmatter/nixmac"
+              and .path == ".github/workflows/build.yaml"
+              and .status == "completed"
+              and .conclusion == "success"' \
+            "$run_json" >/dev/null || {
+              echo "Declared Actions run is not the successful official build for the exact repository/SHA" >&2
+              exit 1
+            }
+          gh api "repos/${GITHUB_REPOSITORY}/actions/artifacts/${artifact_id}" > "$artifact_json"
+          jq -e \
+            --argjson run "$actions_run_id" \
+            --arg name "$artifact_name" \
+            --argjson max_bytes "$artifact_archive_limit" \
+            '.workflow_run.id == $run
+              and .name == $name
+              and .expired == false
+              and (.size_in_bytes | type == "number" and . > 0 and . <= $max_bytes)' \
+            "$artifact_json" >/dev/null || {
+              echo "Declared artifact is invalid, expired, or exceeds the archive size limit" >&2
+              exit 1
+            }
+          artifact_zip="$RUNNER_TEMP/tested-actions-artifact.zip"
+          gh api "repos/${GITHUB_REPOSITORY}/actions/artifacts/${artifact_id}/zip" > "$artifact_zip"
+          artifact_archive_size="$(wc -c < "$artifact_zip")"
+          (( artifact_archive_size > 0 && artifact_archive_size <= artifact_archive_limit )) || {
+            echo "Downloaded Actions artifact exceeds its archive size limit" >&2
+            exit 1
+          }
+          [[ "$(sha256sum "$artifact_zip" | cut -d' ' -f1)" == "$expected_archive_sha" ]] || {
+            echo "Downloaded Actions artifact archive SHA-256 does not match the manifest" >&2
+            exit 1
+          }
+          artifact_extract="$RUNNER_TEMP/tested-actions-artifact"
+          python3 ops/scripts/e2e/safe-extract-zip.py \
+            "$artifact_zip" \
+            "$artifact_extract" \
+            "$artifact_expansion_limit" \
+            20000 \
+            536870912
+          mapfile -t app_binaries < <(
+            find "$artifact_extract" -type f -path '*/nixmac.app/Contents/MacOS/nixmac'
+          )
+          [[ "${#app_binaries[@]}" -eq 1 ]] || {
+            echo "Downloaded Actions artifact must contain exactly one nixmac app binary" >&2
+            exit 1
+          }
+          [[ "$(sha256sum "${app_binaries[0]}" | cut -d' ' -f1)" == "$expected_app_sha" ]] || {
+            echo "Downloaded nixmac app SHA-256 does not match the manifest" >&2
+            exit 1
+          }
+          app_contents_dir="$(dirname "$(dirname "${app_binaries[0]}")")"
+          app_bundle_dir="$(dirname "$app_contents_dir")"
+          official_bundle_sha="$(
+            python3 ops/scripts/e2e/canonical-app-digest.py "$app_bundle_dir"
+          )"
+          app_plist="$app_contents_dir/Info.plist"
+          [[ -f "$app_plist" ]] || {
+            echo "Downloaded nixmac app is missing Contents/Info.plist" >&2
+            exit 1
+          }
+          verified_app_version="$(
+            python3 - "$app_plist" <<'PY'
+          import plistlib
+          import sys
+
+          with open(sys.argv[1], "rb") as handle:
+              version = plistlib.load(handle).get("CFBundleShortVersionString")
+          if not isinstance(version, str) or not version.strip():
+              raise SystemExit("Downloaded nixmac app has no CFBundleShortVersionString")
+          print(version)
+          PY
+          )"
+          runtime_attestation_relative="runtime-attestation.json"
+          runtime_app_path="${EVIDENCE_DIR_INPUT}/runtime/nixmac.app"
+          attestation_tools_tar="$RUNNER_TEMP/runtime-attestation-tools.tar"
+          tar -cf "$attestation_tools_tar" \
+            -C ops/scripts/e2e \
+            canonical-app-digest.py \
+            capture-runtime-attestation.sh
+          runtime_attestation_runner="set -euo pipefail; tools_dir=\$(mktemp -d /tmp/nixmac-attestation.XXXXXX); trap 'rm -rf \"\$tools_dir\"' EXIT; tar -xf - -C \"\$tools_dir\"; bash \"\$tools_dir/capture-runtime-attestation.sh\" \"\$@\""
+          printf -v runtime_attestation_command \
+            'bash -c %q -- %q %q %q %q %q %q' \
+            "$runtime_attestation_runner" \
+            "-" \
+            "$runtime_app_path" \
+            "$REPORT_TOOL_SHA" \
+            "$expected_app_sha" \
+            "$official_bundle_sha" \
+            "$verified_app_version"
+          ssh "${ssh_common[@]}" -- "$ssh_dest" "$runtime_attestation_command" \
+            < "$attestation_tools_tar" |
+            python3 ops/scripts/e2e/bounded-stream-copy.py \
+              "$local_evidence/$runtime_attestation_relative" \
+              65536
+          runtime_attestation_size="$(
+            wc -c < "$local_evidence/$runtime_attestation_relative"
+          )"
+          (( runtime_attestation_size > 0 && runtime_attestation_size <= 65536 )) || {
+            echo "Publisher-produced runtime attestation must be non-empty and at most 64 KiB" >&2
+            exit 1
+          }
+          runtime_attestation_sha="$(
+            sha256sum "$local_evidence/$runtime_attestation_relative" | cut -d' ' -f1
+          )"
+          runtime_attestation_captured_at="$(
+            jq -r '.capturedAt' "$local_evidence/$runtime_attestation_relative"
+          )"
+          enriched_manifest="$local_evidence/terminal-result.enriched.json"
+          jq \
+            --arg path "$runtime_attestation_relative" \
+            --arg sha "$runtime_attestation_sha" \
+            --arg bundle_sha "$official_bundle_sha" \
+            --arg completed "$runtime_attestation_captured_at" \
+            '.testedArtifact.runtimeAttestation = {path: $path, sha256: $sha}
+              | .testedArtifact.appBundleSha256 = $bundle_sha
+              | .timestamps.completedAt = $completed' \
+            "$local_evidence/terminal-result.remote.json" > "$enriched_manifest"
+          mv "$enriched_manifest" "$local_evidence/terminal-result.remote.json"
+
+          mapfile -t evidence_specs < <(
+            jq -r \
+              '[
+                (.evidence.screenshots[] | {path, max: 4194304}),
+                {path: .evidence.video.path, max: 15728640},
+                {path: .provider.trace.path, max: 1048576}
+              ] | .[] | [.path, .max] | @tsv' \
+              "$local_evidence/terminal-result.remote.json"
+          )
+          if [[ "${#evidence_specs[@]}" -lt 4 || "${#evidence_specs[@]}" -gt 8 ]]; then
+            echo "Manifest must reference two to six screenshots, one video, and one provider trace" >&2
+            exit 1
+          fi
+          total_evidence_bytes="$runtime_attestation_size"
+          for evidence_spec in "${evidence_specs[@]}"; do
+            IFS=$'\t' read -r relative_path max_bytes <<< "$evidence_spec"
+            [[ "$relative_path" =~ ^[A-Za-z0-9._/-]+$ ]] &&
+              [[ "$relative_path" != /* ]] &&
+              [[ "/$relative_path/" != *"/../"* ]] &&
+              [[ "/$relative_path/" != *"/./"* ]] || {
+                echo "Unsafe evidence path in manifest: $relative_path" >&2
+                exit 1
+              }
+            remote_evidence_path="${EVIDENCE_DIR_INPUT}/${relative_path}"
+            remote_evidence_size="$(remote_file_size "$remote_evidence_path")"
+            (( remote_evidence_size <= max_bytes )) || {
+              echo "Remote evidence exceeds its transfer limit: $relative_path" >&2
+              exit 1
+            }
+            total_evidence_bytes=$((total_evidence_bytes + remote_evidence_size))
+            (( total_evidence_bytes <= 31457280 )) || {
+              echo "Remote evidence set exceeds the 30 MiB transfer limit" >&2
+              exit 1
+            }
+            mkdir -p "$local_evidence/$(dirname "$relative_path")"
+            bounded_remote_copy \
+              "$remote_evidence_path" \
+              "$local_evidence/$relative_path" \
+              "$max_bytes"
+          done
+
+          semantic_audit_relative="publisher-semantic-video-audit.json"
+          semantic_audit_path="$local_evidence/$semantic_audit_relative"
+          public_video_relative="publisher-reviewed-video.mp4"
+          public_video_path="$local_evidence/$public_video_relative"
+          node ops/scripts/e2e/trusted-video-audit.mjs \
+            "$local_evidence/terminal-result.remote.json" \
+            "$local_evidence" \
+            "$semantic_audit_path" \
+            "$public_video_path" \
+            "$OPENROUTER_MODEL"
+          public_video_size="$(wc -c < "$public_video_path")"
+          (( public_video_size > 0 && public_video_size <= 15728640 )) || {
+            echo "Publisher-reviewed public video must be non-empty and at most 15 MiB" >&2
+            exit 1
+          }
+          public_video_sha="$(sha256sum "$public_video_path" | cut -d' ' -f1)"
+          [[ "$(jq -r '.videoSha256' "$semantic_audit_path")" == "$public_video_sha" ]] || {
+            echo "Publisher semantic audit must bind the exact public video" >&2
+            exit 1
+          }
+          while IFS=$'\t' read -r screenshot_path screenshot_sha; do
+            [[ "$screenshot_path" =~ ^publisher-reviewed-screenshot-[0-9]{2}\.png$ ]] || {
+              echo "Publisher semantic audit returned an unsafe screenshot path" >&2
+              exit 1
+            }
+            reviewed_screenshot="$local_evidence/$screenshot_path"
+            [[ -f "$reviewed_screenshot" ]] || {
+              echo "Publisher-reviewed screenshot is missing: $screenshot_path" >&2
+              exit 1
+            }
+            (( $(wc -c < "$reviewed_screenshot") <= 4194304 )) || {
+              echo "Publisher-reviewed screenshot exceeds 4 MiB: $screenshot_path" >&2
+              exit 1
+            }
+            [[ "$(sha256sum "$reviewed_screenshot" | cut -d' ' -f1)" == "$screenshot_sha" ]] || {
+              echo "Publisher semantic audit screenshot hash mismatch: $screenshot_path" >&2
+              exit 1
+            }
+          done < <(
+            jq -r '.reviewedScreenshots[] | [.path, .sha256] | @tsv' "$semantic_audit_path"
+          )
+          semantic_audit_size="$(wc -c < "$semantic_audit_path")"
+          (( semantic_audit_size > 0 && semantic_audit_size <= 262144 )) || {
+            echo "Publisher semantic audit must be non-empty and at most 256 KiB" >&2
+            exit 1
+          }
+          total_evidence_bytes=$((total_evidence_bytes + semantic_audit_size))
+          (( total_evidence_bytes <= 31457280 )) || {
+            echo "Evidence set exceeds the 30 MiB transfer limit" >&2
+            exit 1
+          }
+          semantic_audit_sha="$(sha256sum "$semantic_audit_path" | cut -d' ' -f1)"
+          enriched_manifest="$local_evidence/terminal-result.publisher-enriched.json"
+          jq \
+            --arg path "$semantic_audit_relative" \
+            --arg sha "$semantic_audit_sha" \
+            --arg video_path "$public_video_relative" \
+            --arg video_sha "$public_video_sha" \
+            --slurpfile audit "$semantic_audit_path" \
+            '.evidence.video.path = $video_path
+              | .evidence.video.sha256 = $video_sha
+              | .evidence.screenshots = [
+                  .evidence.screenshots as $source
+                  | range(0; $source | length) as $index
+                  | $source[$index] + {
+                      path: $audit[0].reviewedScreenshots[$index].path,
+                      sha256: $audit[0].reviewedScreenshots[$index].sha256
+                    }
+                ]
+              | .presentation.status = $audit[0].status
+              | .presentation.firstMeaningfulActionSeconds = $audit[0].firstMeaningfulActionSeconds
+              | .presentation.watchedStartToFinish = $audit[0].watchedStartToFinish
+              | .presentation.terminalStateVisible = $audit[0].terminalStateVisible
+              | .presentation.terminalStateVisibleSeconds = $audit[0].terminalStateVisibleSeconds
+              | .presentation.semanticAudit = {
+                path: $path,
+                sha256: $sha,
+                reviewer: $audit[0].reviewer,
+                reviewerKind: $audit[0].reviewerKind,
+                reviewScope: $audit[0].reviewScope,
+                reviewToolSha: $audit[0].reviewToolSha,
+                reviewRunId: $audit[0].reviewRunId,
+                reviewRunAttempt: $audit[0].reviewRunAttempt,
+                reviewModel: $audit[0].reviewModel,
+                reviewPolicyVersion: $audit[0].reviewPolicyVersion,
+                localSensitivityScanner: $audit[0].localSensitivityScanner,
+                localSensitivityScanImageCount: $audit[0].localSensitivityScanImageCount,
+                reviewedFrameCount: $audit[0].reviewedFrameCount,
+                reviewedContactSheetCount: $audit[0].reviewedContactSheetCount,
+                reviewedScreenshotCount: $audit[0].reviewedScreenshotCount,
+                reviewSampleIntervalSeconds: $audit[0].reviewSampleIntervalSeconds,
+                sourceVideoSha256: $audit[0].sourceVideoSha256,
+                sensitiveContentVisible: $audit[0].sensitiveContentVisible
+              }' \
+            "$local_evidence/terminal-result.remote.json" > "$enriched_manifest"
+          mv "$enriched_manifest" "$local_evidence/terminal-result.remote.json"
+
+          manifest="$local_evidence/terminal-result.v2.json"
+          jq --arg evidence "$local_evidence" '.evidence.root = $evidence' \
+            "$local_evidence/terminal-result.remote.json" > "$manifest"
+
+          mkdir -p artifacts/terminal-report-private artifacts/terminal-report-public
+          node tests/e2e/computer-use/terminal-report.mjs render \
+            --input "$manifest" \
+            --output-dir artifacts/terminal-report-private \
+            --verified-app-version "$verified_app_version"
+          cp artifacts/terminal-report-private/index.html artifacts/terminal-report-public/index.html
+
+          verdict="$(jq -r '.verdict' artifacts/terminal-report-private/terminal-result.normalized.json)"
+          result_label="$(jq -r '.resultLabel' artifacts/terminal-report-private/terminal-result.normalized.json)"
+          {
+            echo "verdict=$verdict"
+            echo "result_label=$result_label"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Upload self-contained report
+        uses: actions/upload-artifact@v7
+        with:
+          name: computer-use-terminal-report
+          path: artifacts/terminal-report-public/
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Summarize validated product result
+        shell: bash
+        env:
+          VERDICT: ${{ steps.validate.outputs.verdict }}
+          RESULT_LABEL: ${{ steps.validate.outputs.result_label }}
+          EXPECTED_SHA: ${{ inputs.expected_sha }}
+          PR_NUMBER: ${{ inputs.pull_request }}
+        run: |
+          {
+            echo "## Computer Use terminal result"
+            echo
+            echo "- Product result: \`$RESULT_LABEL\`"
+            echo "- Raw verdict: \`$VERDICT\`"
+            echo "- Pull request: #$PR_NUMBER"
+            echo "- Exact tested SHA: \`$EXPECTED_SHA\`"
+            echo "- Report publication: pending in the separate publish job"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+  publish:
+    name: Publish terminal report
+    needs: render
+    if: always() && needs.render.result == 'success'
+    runs-on: arc
+    timeout-minutes: 15
+    permissions:
+      actions: read
+      contents: write
+      pull-requests: read
+    steps:
+      - name: Checkout protected publisher
+        uses: actions/checkout@v6
+        with:
+          ref: main
+          fetch-depth: 1
+          persist-credentials: false
+
+      - name: Download self-contained report
+        uses: actions/download-artifact@v7
+        with:
+          name: computer-use-terminal-report
+          path: artifacts/terminal-report-public
+
+      - name: Check whether the tested SHA is still current
+        id: latest
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          EXPECTED_SHA: ${{ inputs.expected_sha }}
+          PR_NUMBER: ${{ inputs.pull_request }}
+        run: |
+          set -euo pipefail
+          pull_request_json="$RUNNER_TEMP/pull-request-${PR_NUMBER}.json"
+          gh api "repos/${GITHUB_REPOSITORY}/pulls/${PR_NUMBER}" > "$pull_request_json"
+          node tests/e2e/computer-use/latest-report-eligibility.mjs check \
+            --input "$pull_request_json" \
+            --expected-sha "$EXPECTED_SHA"
+
+      - name: Publish report
+        id: publish-report
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPORT_DIR: artifacts/terminal-report-public
+          REPORT_PREFIX: computer-use-e2e/terminal/pr-${{ inputs.pull_request }}
+          PUBLISH_PATH: computer-use-e2e/terminal/pr-${{ inputs.pull_request }}/run-${{ github.run_id }}-${{ github.run_attempt }}
+          LATEST_PATH: computer-use-e2e/terminal/pr-${{ inputs.pull_request }}/latest
+          INDEX_URL: https://darkmatter.github.io/nixmac/computer-use-e2e/terminal/pr-${{ inputs.pull_request }}/run-${{ github.run_id }}-${{ github.run_attempt }}/index.html
+          LATEST_INDEX_URL: https://darkmatter.github.io/nixmac/computer-use-e2e/terminal/pr-${{ inputs.pull_request }}/latest/index.html
+          RUN_ASSET_BASE_URL: https://darkmatter.github.io/nixmac/computer-use-e2e/terminal/pr-${{ inputs.pull_request }}/run-${{ github.run_id }}-${{ github.run_attempt }}/
+          RETENTION_KEEP_RUNS: "20"
+          PR_NUMBER: ${{ inputs.pull_request }}
+          UPDATE_LATEST: ${{ steps.latest.outputs.update_latest }}
+          LATEST_ORDER: ${{ github.run_id }}:${{ github.run_attempt }}
+          LATEST_GUARD_REPOSITORY: ${{ github.repository }}
+          LATEST_GUARD_PR: ${{ inputs.pull_request }}
+          LATEST_GUARD_EXPECTED_SHA: ${{ inputs.expected_sha }}
+        run: ops/scripts/e2e/publish-report.sh
+
+      - name: Summarize publication result
+        shell: bash
+        env:
+          PRODUCT_VERDICT: ${{ needs.render.outputs.verdict }}
+          RESULT_LABEL: ${{ needs.render.outputs.result_label }}
+          INDEX_URL: ${{ steps.publish-report.outputs.index_url }}
+          LATEST_INDEX_URL: ${{ steps.publish-report.outputs.latest_index_url }}
+          LATEST_UPDATED: ${{ steps.publish-report.outputs.latest_updated }}
+        run: |
+          {
+            echo "## Published Computer Use report"
+            echo
+            echo "- Product result: \`$RESULT_LABEL\`"
+            echo "- Raw verdict: \`$PRODUCT_VERDICT\`"
+            echo "- Report status: \`published\`"
+            echo "- Content-identified report (retention-bounded): $INDEX_URL"
+            if [[ "$LATEST_UPDATED" == "true" ]]; then
+              echo "- Latest alias: $LATEST_INDEX_URL"
+            else
+              echo "- Latest alias: not updated because the tested SHA is no longer current"
+            fi
+            echo
+            echo "A report publication failure fails this delivery job only; it does not rewrite the validated product verdict."
+          } >> "$GITHUB_STEP_SUMMARY"

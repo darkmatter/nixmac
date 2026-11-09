@@ -2,11 +2,25 @@ import { viewModelActions } from "@nixmac/state";
 import { afterEach, describe, expect, it } from "vitest";
 
 import { orpcHandlers } from "../.storybook/mocks/tauri-runtime";
+import type { SecretsVaultState } from "./ipc/orpc-bindings";
 import type { GitState, GitStatus } from "./ipc/types";
 
 describe("Storybook Tauri oRPC mocks", () => {
   afterEach(() => {
     viewModelActions.reset();
+  });
+
+  it("returns a secrets vault matching the generated contract", async () => {
+    const state = (await orpcHandlers["secrets.getState"]?.(undefined)) as
+      | SecretsVaultState
+      | undefined;
+    const vault = state?.vault;
+
+    expect(state?.loading).toBe(false);
+    expect(vault?.entries.length).toBeGreaterThan(0);
+    const primaryIdentityId = vault?.primaryDecryptionIdentityId;
+    expect(primaryIdentityId).not.toBeNull();
+    expect(vault?.recipients.some((recipient) => recipient.id === primaryIdentityId)).toBe(true);
   });
 
   it("handles editor.readFile for the nix editor", async () => {

@@ -78,19 +78,13 @@ pub fn current_state_built<R: Runtime>(app: &AppHandle<R>, current_changes: &[Ch
         None => current_changes.is_empty(),
         Some(id) => {
             let pool = app.state::<crate::db::DbPool>();
-            let Ok(mut conn) = pool.get() else {
+            // The build snapshot's content key encodes the exact set of change
+            // hashes that were built; a match means the working tree is unchanged.
+            let Ok(Some(stored_key)) = crate::db::snapshots::get_key_by_id(&pool, id) else {
                 return false;
             };
-            let Ok(stored_hashes) =
-                crate::db::changesets::fetch_hashes_for_changeset(&mut conn, id)
-            else {
-                return false;
-            };
-            let current_hashes: std::collections::HashSet<&str> =
-                current_changes.iter().map(|c| c.hash.as_str()).collect();
-            let stored_set: std::collections::HashSet<&str> =
-                stored_hashes.iter().map(|h| h.as_str()).collect();
-            current_hashes == stored_set
+            let hashes: Vec<String> = current_changes.iter().map(|c| c.hash.clone()).collect();
+            crate::db::keys::snapshot_key(&hashes) == stored_key
         }
     }
 }
@@ -114,18 +108,20 @@ pub fn set_active_build<R: Runtime>(
     .map(|_| ())
 }
 
-/// Compute build state with a "bare" changeset to verify it
+/// Record a bare snapshot (content key only, no message) for the built change
+/// set so a later `current_state_built` check can verify it.
 pub fn record_build<R: Runtime>(app: &AppHandle<R>, git_status: &GitStatus) -> Result<()> {
-    let config_dir = crate::storage::store::get_config_dir(app)?;
     let pool = app.state::<crate::db::DbPool>();
 
     let build_changeset_id = if !git_status.changes.is_empty() {
-        let base_id = crate::db::commits::store_head_commit(&pool, &config_dir, None)?
-            .ok_or_else(|| anyhow::anyhow!("missing HEAD commit while recording build state"))?;
-        Some(crate::db::store_bare_changeset::store(
+        let hashes: Vec<String> = git_status.changes.iter().map(|c| c.hash.clone()).collect();
+        let now = crate::utils::unix_now();
+        Some(crate::db::snapshots::upsert(
             &pool,
-            base_id,
-            &git_status.changes,
+            &crate::db::keys::snapshot_key(&hashes),
+            None,
+            None,
+            now,
         )?)
     } else {
         None

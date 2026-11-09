@@ -1,13 +1,12 @@
-//! SQLite database for persisting evolution history, summaries, and prompts.
+//! SQLite database for content-addressed summaries, snapshots, and app metadata.
 
-pub mod changesets;
-pub mod commits;
 pub mod evolutions;
+pub mod keys;
 pub mod pool;
 pub mod restore_commits;
 mod schema;
-pub mod store_bare_changeset;
-pub mod store_whole_diff_changeset;
+pub mod snapshots;
+pub mod summaries;
 pub(crate) mod tables;
 
 use anyhow::Result;
@@ -67,7 +66,7 @@ mod tests {
         let pool = init_pool_at_path(&db_path).await.unwrap();
         let mut conn = pool.get().unwrap();
 
-        let count = crate::db::tables::commits::table
+        let count = crate::db::tables::snapshots::table
             .select(count_star())
             .first::<i64>(&mut conn)
             .unwrap();
@@ -75,24 +74,45 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn migration_03_drops_queued_summaries_table() {
-        // PR #330 removed the queued summary pipeline; migration 03 then drops
-        // the table the worker used to drain. New databases shouldn't contain
-        // it after init.
+    async fn schema_creates_content_addressed_tables_and_no_legacy_tables() {
         let temp_dir = tempfile::tempdir().unwrap();
         let db_path = temp_dir.path().join("nixmac.db");
 
         let pool = init_pool_at_path(&db_path).await.unwrap();
         let mut conn = pool.get().unwrap();
 
-        let surviving = diesel::select(diesel::dsl::sql::<BigInt>(
-            "COUNT(*) FROM sqlite_master WHERE type = 'table' AND name = 'queued_summaries'",
-        ))
-        .get_result::<i64>(&mut conn)
-        .unwrap();
-        assert_eq!(
-            surviving, 0,
-            "queued_summaries should be dropped by 03-drop-queued-summaries"
-        );
+        for present in [
+            "patch_summaries",
+            "summary_groups",
+            "summary_group_members",
+            "snapshots",
+            "evolutions",
+            "restore_commits",
+        ] {
+            let count = diesel::select(diesel::dsl::sql::<BigInt>(&format!(
+                "COUNT(*) FROM sqlite_master WHERE type = 'table' AND name = '{present}'"
+            )))
+            .get_result::<i64>(&mut conn)
+            .unwrap();
+            assert_eq!(count, 1, "{present} should exist");
+        }
+
+        for absent in [
+            "queued_summaries",
+            "commits",
+            "changes",
+            "change_sets",
+            "set_changes",
+            "change_summaries",
+            "group_summaries",
+            "prompts",
+        ] {
+            let count = diesel::select(diesel::dsl::sql::<BigInt>(&format!(
+                "COUNT(*) FROM sqlite_master WHERE type = 'table' AND name = '{absent}'"
+            )))
+            .get_result::<i64>(&mut conn)
+            .unwrap();
+            assert_eq!(count, 0, "{absent} should not exist");
+        }
     }
 }

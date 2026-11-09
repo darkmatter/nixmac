@@ -73,6 +73,16 @@ describe("useEvolve", () => {
     expect(useUiState.getState().evolvePrompt).toBe("");
   });
 
+  it("clears the previous commit-message suggestion when a new evolution starts", async () => {
+    mocks.evolve.mockResolvedValue(undefined);
+    uiActions.setEvolvePrompt("install vim");
+    uiActions.setCommitMessageSuggestion("feat: stale suggestion");
+
+    await useEvolve().handleEvolve();
+
+    expect(useUiState.getState().commitMessageSuggestion).toBeNull();
+  });
+
   it("surfaces failures without clearing the prompt", async () => {
     mocks.evolve.mockRejectedValue(new Error("AI evolution failed: boom"));
 

@@ -4,10 +4,11 @@ use anyhow::{Context, Result};
 use serde_json::{Map, Value};
 use std::collections::BTreeMap;
 
-use crate::evolve::nix_file_editor::{apply_semantic_edit, escape_nix_string};
+use crate::evolve::nix_file_editor::apply_semantic_edit;
 use crate::evolve::types::{FileEditAction, SemanticFileEdit};
 use crate::system::nix::get_system_primary_user;
 use crate::system::scanner;
+use crate::utils::escape_nix_string;
 use crate::{managed_edits::managed_edit, shared_types};
 use tauri::AppHandle;
 

@@ -16,9 +16,7 @@ type AuthStatus = {
 type AccountStatus = {
   signedIn: boolean;
   account: { id: string; email: string } | null;
-  keyId: string | null;
-  serverUrl: string;
-  githubReady: boolean;
+  webApiAuthReady: boolean;
   webAccount: { id: string; email: string } | null;
 };
 
@@ -81,6 +79,15 @@ vi.mock("@/ipc/api", () => ({
 // hoisted mock factory, which a static top-level import cannot reach.
 vi.mock("@/lib/orpc", () => ({
   orpc: {
+    account: {
+      status: {
+        queryOptions: (options?: Record<string, unknown>) => ({
+          queryKey: ["account", "status"],
+          queryFn: () => mocks.status(),
+          ...options,
+        }),
+      },
+    },
     billing: {
       state: {
         queryOptions: (options?: Record<string, unknown>) => ({
@@ -139,9 +146,7 @@ describe("InferenceSetup", () => {
     mocks.status.mockResolvedValue({
       signedIn: false,
       account: null,
-      keyId: null,
-      serverUrl: "https://sync.nixmac.app",
-      githubReady: false,
+      webApiAuthReady: false,
       webAccount: null,
     });
     mocks.sendOtp.mockResolvedValue(undefined);
@@ -276,9 +281,7 @@ describe("InferenceSetup", () => {
     mocks.status.mockResolvedValue({
       signedIn: false,
       account: null,
-      keyId: null,
-      serverUrl: "https://sync.nixmac.app",
-      githubReady: true,
+      webApiAuthReady: true,
       webAccount: { id: "acct_1", email: "ada@example.com" },
     });
 
@@ -293,9 +296,7 @@ describe("InferenceSetup", () => {
     mocks.status.mockResolvedValue({
       signedIn: false,
       account: null,
-      keyId: null,
-      serverUrl: "https://sync.nixmac.app",
-      githubReady: true,
+      webApiAuthReady: true,
       webAccount: { id: "acct_1", email: "ada@example.com" },
     });
     mocks.billingState.mockResolvedValue({
@@ -331,9 +332,7 @@ describe("InferenceSetup", () => {
     mocks.status.mockResolvedValue({
       signedIn: false,
       account: null,
-      keyId: null,
-      serverUrl: "https://sync.nixmac.app",
-      githubReady: true,
+      webApiAuthReady: true,
       webAccount: { id: "acct_1", email: "ada@example.com" },
     });
     mocks.billingState.mockResolvedValue({
@@ -368,9 +367,7 @@ describe("InferenceSetup", () => {
     mocks.status.mockResolvedValue({
       signedIn: false,
       account: null,
-      keyId: null,
-      serverUrl: "https://sync.nixmac.app",
-      githubReady: true,
+      webApiAuthReady: true,
       webAccount: { id: "acct_1", email: "ada@example.com" },
     });
     mocks.billingState.mockResolvedValue({
@@ -407,9 +404,7 @@ describe("InferenceSetup", () => {
     mocks.status.mockResolvedValue({
       signedIn: false,
       account: null,
-      keyId: null,
-      serverUrl: "https://sync.nixmac.app",
-      githubReady: true,
+      webApiAuthReady: true,
       webAccount: { id: "acct_1", email: "ada@example.com" },
     });
     mocks.billingState.mockResolvedValue({

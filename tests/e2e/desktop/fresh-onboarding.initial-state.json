@@ -1,0 +1,22 @@
+{
+  "preferences": {
+    "configDir": null,
+    "repoRoot": null,
+    "hostAttr": null,
+    "sendDiagnostics": false,
+    "diagnosticsNoticeAcknowledged": true,
+    "scanHomebrewOnStartup": false,
+    "autoSummarizeOnFocus": false
+  },
+  "onboarding": {
+    "completedAt": null,
+    "lastBuildAt": null,
+    "macScannedAt": null,
+    "loginDecided": false,
+    "provisionalConfigDir": null
+  },
+  "evolve": {},
+  "build": { "buildState": {} },
+  "legacy-settings": { "globalPreferencesMigratedV1": true },
+  "query-cache": {}
+}

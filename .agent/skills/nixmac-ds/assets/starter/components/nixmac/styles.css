@@ -1,0 +1,8 @@
+/* nixmac design system — global entry point.
+   Consumers link THIS file. Import-only; see tokens/ and fonts.css. */
+@import "./tokens/fonts.css";
+@import "./tokens/colors.css";
+@import "./tokens/typography.css";
+@import "./tokens/radius.css";
+@import "./tokens/spacing.css";
+@import "./tokens/effects.css";

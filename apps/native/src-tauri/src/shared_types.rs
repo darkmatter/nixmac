@@ -20,6 +20,8 @@ mod managed_edits;
 mod onboarding;
 #[path = "shared_types/prefs.rs"]
 mod prefs;
+#[path = "shared_types/secrets_management.rs"]
+mod secrets_management;
 #[path = "shared_types/settings_io.rs"]
 mod settings_io;
 #[path = "shared_types/system.rs"]
@@ -35,5 +37,6 @@ pub use github::*;
 pub use managed_edits::*;
 pub use onboarding::*;
 pub use prefs::*;
+pub use secrets_management::*;
 pub use settings_io::*;
 pub use system::*;

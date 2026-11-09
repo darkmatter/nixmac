@@ -157,6 +157,8 @@ blob-report/
 # Playwright MCP scratch (screenshots, console logs)
 .playwright-mcp/
 **/.playwright-mcp/
+# Generated Skills CLI output (restored from skills-lock.json on postinstall).
+# First-party design system is tracked at `.agent/skills/nixmac-ds`.
 .claude
 .agents
 .codex

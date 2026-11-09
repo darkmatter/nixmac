@@ -7,6 +7,9 @@ use crate::evolve::search_packages::execute_search_packages;
 
 use super::{ToolCtx, ToolResult};
 
+const DEFAULT_SEARCH_LIMIT: u64 = 20;
+const MAX_SEARCH_LIMIT: u64 = 50;
+
 pub(crate) fn definition() -> Tool {
     Tool {
         name: "search_packages".to_string(),
@@ -55,9 +58,12 @@ pub(crate) fn execute(ctx: &ToolCtx) -> Result<ToolResult> {
     let query = args["query"]
         .as_str()
         .ok_or_else(|| anyhow!("search_packages: missing query"))?;
-    // Clamp `limit` between 1 and 50 (default 20). Use as_i64 so negative
+    // Clamp `limit` between 1 and MAX_SEARCH_LIMIT (default DEFAULT_SEARCH_LIMIT). Use as_i64 so negative
     // and crazy-large values provided by callers are handled gracefully.
-    let limit = args["limit"].as_i64().unwrap_or(20).clamp(1, 50) as u64;
+    let limit = args["limit"]
+        .as_i64()
+        .unwrap_or(DEFAULT_SEARCH_LIMIT as i64)
+        .clamp(1, MAX_SEARCH_LIMIT as i64) as u64;
     let use_regex = args["use_regex"].as_bool().unwrap_or(false);
 
     // Clamp to at most 5 channels to prevent abuse since each channel adds latency

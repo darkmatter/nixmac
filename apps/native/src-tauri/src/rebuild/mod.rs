@@ -1,6 +1,7 @@
 #![allow(unused_imports)]
 //! Darwin-rebuild pipeline: build, activate, finalize, and rollback.
 
+pub mod activation_path;
 pub mod darwin;
 pub mod finalize_apply;
 pub mod finalize_restore;

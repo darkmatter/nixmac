@@ -1,5 +1,7 @@
 import { onboardingActions, uiActions } from "@nixmac/state";
 import { tauriAPI } from "@/ipc/api";
+import { setCachedAccountStatus } from "@/lib/account-status";
+import { queryClient } from "@/lib/orpc";
 import { clearChangeMap } from "@/viewmodel/change-map";
 import { clearEvolveEvents } from "@/viewmodel/evolution";
 import { clearRebuildLog } from "@/viewmodel/rebuild";
@@ -17,7 +19,8 @@ async function resetOnboarding(options: ResetOnboardingOptions = {}): Promise<Re
   const reload = options.reload ?? true;
 
   // deprecated(orpc): replace with client/orpc from @/lib/orpc
-  await tauriAPI.account.signOut();
+  const accountStatus = await tauriAPI.account.signOut();
+  setCachedAccountStatus(queryClient, accountStatus);
   // deprecated(orpc): replace with client/orpc from @/lib/orpc
   await tauriAPI.ui.setPrefs({ developerMode: true });
   // deprecated(orpc): replace with client/orpc from @/lib/orpc

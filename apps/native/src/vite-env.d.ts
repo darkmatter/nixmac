@@ -14,5 +14,9 @@ interface ImportMetaEnv {
   readonly VITEST?: string;
 }
 
-declare const __NIXMAC_PROFILE__: "development" | "release" | "e2e";
-declare const __NIXMAC_PROFILE_JSON__: string;
+/**
+ * The selected deployment profile, substituted by `nixmac-profile.ts` as a
+ * JavaScript object literal. Typed `unknown` on purpose: `lib/env.ts` parses it
+ * against `EnvProfileSchema`, so the shape is checked rather than declared.
+ */
+declare const __NIXMAC_PROFILE_DATA__: unknown;

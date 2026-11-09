@@ -1,0 +1,22 @@
+/* nixmac effects — shadows, focus rings, and the signature brand glow. */
+:root {
+  /* Elevation (shadcn defaults) */
+  --shadow-xs: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+  --shadow-sm: 0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1);
+  --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+  --shadow-2xl: 0 25px 50px -12px rgb(0 0 0 / 0.45);
+
+  /* Focus ring — 3px ring at 50% of --ring */
+  --ring-width: 3px;
+
+  /* Brand halo / glow (from index.css @utility brand-glow) */
+  --brand-glow:
+    0 0 0 1px color-mix(in oklch, var(--brand) 40%, transparent),
+    0 0 24px 2px color-mix(in oklch, var(--brand) 35%, transparent),
+    0 0 60px 8px color-mix(in oklch, var(--brand) 18%, transparent);
+
+  /* Teal build-glow (glow-frame pill) */
+  --teal-glow:
+    0 0 0 1px color-mix(in oklch, var(--glow-teal) 45%, transparent),
+    0 0 18px 2px color-mix(in oklch, var(--glow-teal) 40%, transparent);
+}

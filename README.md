@@ -12,6 +12,7 @@
 <p align="center">
   <a href="https://github.com/darkmatter/nixmac/releases/latest"><img src="https://img.shields.io/github/v/release/darkmatter/nixmac" alt="Latest Release"></a>
   <a href="https://github.com/darkmatter/nixmac/blob/main/LICENSE"><img src="https://img.shields.io/badge/license-MIT-green" alt="License"></a>
+  <a href="https://discord.gg/xNnABdwBFg"><img src="https://img.shields.io/badge/join%20discord-blue" alt="discord" /></a>
 </p>
 
 ______________________________________________________________________

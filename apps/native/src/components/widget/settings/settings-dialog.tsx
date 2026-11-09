@@ -1,4 +1,5 @@
 import { Button } from "@/components/ui/button";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { AccountTab } from "@/components/widget/settings/account-tab";
 import { AiModelsTab } from "@/components/widget/settings/ai-models-tab";
 import { ApiKeysTab } from "@/components/widget/settings/api-keys-tab";
@@ -25,6 +26,7 @@ import { useNavigate, useSearch } from "@tanstack/react-router";
 import { nav } from "@/router";
 import {
   Bot,
+  CircleAlert,
   FolderOpen,
   Key,
   Settings2,
@@ -61,7 +63,7 @@ function NavItem({ icon, label, active, onClick }: NavItemProps) {
 }
 
 export function SettingsDialog() {
-  const settingsActiveTab = useSearch({ from: "/settings" }).tab;
+  const { tab: settingsActiveTab, prompt: settingsPrompt } = useSearch({ from: "/settings" });
   const navigate = useNavigate({ from: "/settings" });
   const configDir = useViewModel((s) => s.preferences?.configDir ?? "");
   const hosts = useViewModel((s) => s.hosts);
@@ -72,11 +74,12 @@ export function SettingsDialog() {
   // If developer mode is turned off while the developer tab is active, fall back to General.
   useEffect(() => {
     if (!developerMode && activeTab === "developer") {
-      navigate({ search: { tab: "general" } });
+      navigate({ search: { tab: "general", prompt: settingsPrompt } });
     }
-  }, [developerMode, activeTab, navigate]);
+  }, [developerMode, activeTab, navigate, settingsPrompt]);
 
-  const setActiveTab = (tab: SettingsTab) => navigate({ search: { tab } });
+  const setActiveTab = (tab: SettingsTab, prompt?: string) =>
+    navigate({ search: { tab, prompt: prompt ?? settingsPrompt } });
   const [openrouterKeyStatus, setOpenrouterKeyStatus] = useState<ApiKeyStatus>("idle");
   const [openaiKeyStatus, setOpenaiKeyStatus] = useState<ApiKeyStatus>("idle");
   const openrouterTimeoutRef = useRef<NodeJS.Timeout | null>(null);
@@ -287,6 +290,31 @@ export function SettingsDialog() {
 
           {/* Content */}
           <div className="flex-1 overflow-y-auto p-4">
+            {settingsPrompt === "hosted-auth" && (
+              <Alert className="mb-4" variant="destructive">
+                <CircleAlert />
+                <AlertTitle>Sign in to use your nixmac hosted model</AlertTitle>
+                <AlertDescription>
+                  <p>
+                    Your account is signed out, but nixmac hosted inference is still selected. Log
+                    back in or select another model to continue.
+                  </p>
+                  <div className="flex flex-wrap gap-2 pt-1">
+                    <Button onClick={() => setActiveTab("account", "")} size="sm">
+                      Log back in
+                    </Button>
+                    <Button
+                      onClick={() => setActiveTab("ai-models", "")}
+                      size="sm"
+                      variant="outline"
+                    >
+                      Select another model
+                    </Button>
+                  </div>
+                </AlertDescription>
+              </Alert>
+            )}
+
             {activeTab === "general" && (
               <form.Field name="sendDiagnostics">
                 {(sendDiagnosticsField) => (
@@ -331,7 +359,9 @@ export function SettingsDialog() {
                                     openrouterTimeoutRef={openrouterTimeoutRef}
                                     verifyOpenaiKey={verifyOpenaiKey}
                                     verifyOpenrouterKey={verifyOpenrouterKey}
-                                    openaiCompatibleApiBaseUrlField={openaiCompatibleApiBaseUrlField}
+                                    openaiCompatibleApiBaseUrlField={
+                                      openaiCompatibleApiBaseUrlField
+                                    }
                                     openaiCompatibleApiKeyField={openaiCompatibleApiKeyField}
                                   />
                                 )}

@@ -20,9 +20,6 @@ pub fn prepare_managed_edit(app: &AppHandle) -> Result<ManagedEditContext> {
         git::status(&dir).context("Failed to get pre-edit working tree status")?;
 
     let pool = app.state::<db::DbPool>();
-    let _base_commit_id =
-        db::commits::store_head_commit(&pool, &dir, None).context("Failed to store HEAD commit")?;
-
     let pre_state = evolve_state::get_session(app);
     let branch = git::current_branch(&dir).unwrap_or_else(|| "main".to_string());
     let evolution_id = db::evolutions::upsert(&pool, pre_state.evolution_id, &branch)
@@ -103,13 +100,12 @@ pub async fn finalize_managed_edit(
     }
 
     let pool = app.state::<db::DbPool>();
-    let change_sets =
-        summarize::find_existing::for_current_state(&pool, &context.dir).unwrap_or_default();
 
     // Record the resulting state in the cells: the change-map write emits
     // `change_map_changed` and `status_and_cache` emits `git_state_changed`
     // (evolve state was already set above). The frontend mirrors the events.
-    let change_map = summarize::group_existing::from_change_sets(change_sets);
+    let change_map =
+        summarize::find_existing::for_current_state(&pool, &context.dir).unwrap_or_default();
     crate::state::change_map::update(app, change_map);
     git::query::status_and_cache(&context.dir, app).context("Failed to get git status")?;
 

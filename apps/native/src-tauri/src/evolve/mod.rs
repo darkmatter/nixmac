@@ -4,11 +4,14 @@ mod age;
 mod chat_memory;
 pub(crate) mod config;
 mod config_dir_context;
+mod context_budget;
 mod ensure_secret;
 pub(crate) mod file_ops;
 mod gitignore;
+pub(crate) mod isolation;
 pub mod messages;
 pub(crate) mod nix_file_editor;
+mod nixmac_ignore;
 pub mod providers;
 mod search_code;
 pub mod search_docs;
@@ -20,9 +23,6 @@ pub(crate) mod types;
 mod utils;
 
 pub mod lifecycle;
-
-/// Directories ignored by file listing and search helpers.
-pub(crate) const IGNORED_DIRS: [&str; 2] = [".git", "result"];
 
 use crate::evolve::utils::{escape_user_query, format_duration_secs, truncate_error};
 use crate::git::query::repo_root;
@@ -57,6 +57,7 @@ use chat_memory::{ChatMessage, Role as ChatMemoryRole, to_provider_context_messa
 
 pub(crate) use chat_memory::session_chat_memory_store;
 use config_dir_context::format_config_dir_context;
+use context_budget::ensure_meaningful_completion_budget;
 use messages::Message;
 use providers::{
     AiProvider, CliProvider, OllamaProvider, OpenAIProvider, ProviderError, StreamEvent,
@@ -76,9 +77,10 @@ impl MemoryStrategy {
             .evolution_memory_strategy
             .as_str()
         {
-            "" | "none" => MemoryStrategy::None,
-            "retention" => MemoryStrategy::Retention,
-            _ => MemoryStrategy::None,
+            // Empty inherits the profile default ("retention"). Opt out with "none".
+            "" | "retention" => MemoryStrategy::Retention,
+            "none" => MemoryStrategy::None,
+            _ => MemoryStrategy::Retention,
         }
     }
 }
@@ -517,16 +519,14 @@ fn retention_for_tool(tool_name: &str) -> Retention {
         // Multiple edits across iterations may be important but only temporarily.
         "edit_file" | "edit_nix_file" => Retention::Recent { keep_iterations: 3 },
 
-        // Everything else is informational or durable enough to keep for the whole run.
-        // In particular:
-        // 1. "search_packages", "search_docs", and "search_code" need to be durable so that the agent can
-        //      plan to add a bunch of requested packages in one shot toward the end.
-        // 2. "read_file" can be very large; however, the agent likes to read a
-        //      file up front, and then refer back to it at the end after it plans the edit.
-        // 3. "list_files" needs to persist because the agent tries to re-read things later,
-        //      and it's bad if it tries to read files that don't exist that are hallucinated
-        //      from training data.
-        // 4. "think" may contain the original plan up to the point where we start doing build checks.
+        // Large exploration payloads are the main context-window filler. Keep the
+        // latest copy via key dedup, but expire older reads/listings so long runs
+        // do not shrink remaining completion room to a few dozen tokens.
+        "read_file" | "list_files" => Retention::Recent { keep_iterations: 4 },
+
+        // Search results stay durable so the agent can plan multi-package edits
+        // toward the end of a turn without re-querying.
+        // "think" may contain the original plan up to the first build check.
         _ => Retention::Permanent,
     }
 }
@@ -1184,6 +1184,7 @@ pub async fn generate_evolution<R: Runtime>(
     ));
 
     let gitignore_matcher = gitignore::GitignoreChecker::new(repo_root.as_path())?;
+    let nixmac_ignore_matcher = nixmac_ignore::NixmacIgnoreChecker::new(repo_root.as_path())?;
 
     // Track whether we've made any actual edits and/or build checks
     let mut made_edit = false;
@@ -1219,6 +1220,36 @@ pub async fn generate_evolution<R: Runtime>(
         }
 
         iteration += 1;
+
+        // Compact under context pressure before the provider call so we never
+        // send a request with only a handful of completion tokens left (that
+        // pattern produces truncated tool calls and agent loops).
+        let clamped_output_tokens = match ensure_meaningful_completion_budget(
+            &mut messages,
+            iteration,
+            made_build_check,
+            &provider.model_name(),
+            max_output_tokens_for_request,
+        ) {
+            Ok(tokens) => tokens,
+            Err(message) => {
+                warn!("Stopping evolution: {message}");
+                evolution.state = EvolutionState::Failed;
+                emit_evolve_event(
+                    app,
+                    EvolveEvent::error(start_time, Some(iteration), &message, &message),
+                );
+                return Err(EvolutionRunError::from_state(
+                    message,
+                    &evolution,
+                    iteration,
+                    build_attempts,
+                    total_tokens,
+                )
+                .into());
+            }
+        };
+        provider.set_max_output_tokens(clamped_output_tokens);
 
         // Run provider completion inside a short-lived block and select!
         // on it plus a cancellation signal. This lets the future borrow
@@ -1584,6 +1615,7 @@ pub async fn generate_evolution<R: Runtime>(
                         &args,
                         auto_format_nix_files,
                         gitignore_matcher.as_ref(),
+                        &nixmac_ignore_matcher,
                         Some(&build_output_emitter),
                     );
 
@@ -2586,7 +2618,7 @@ fn process_tool_result(
         }
 
         ToolResult::Done(summary) => {
-            if done_gate.build_verified {
+            if done_gate.build_verified && evolution.has_edits() {
                 info!("✅ EVOLUTION COMPLETE (build verified)");
                 info!("Summary: {}", summary);
                 evolution.summary = Some(summary.clone());
@@ -2633,7 +2665,7 @@ fn process_tool_result(
                 info!("✅ EVOLUTION COMPLETE (no edits)");
                 info!("Summary: {}", summary);
                 evolution.summary = Some(summary.clone());
-                evolution.state = EvolutionState::Generated;
+                evolution.state = EvolutionState::Conversational;
                 let msg = Message::Tool {
                     tool_call_id: tool_call_id.to_string(),
                     content: "Evolution complete.".to_string(),
@@ -2658,7 +2690,7 @@ mod tests {
         BUILD_OUTPUT_MAX_CHARS, DoneGate, Evolution, EvolutionMessage, EvolutionState, FileEdit,
         Message, Retention, ToolResult, filter_evolution_messages,
         normalize_openai_max_output_tokens, process_tool_result, read_file_dedup_key,
-        repeat_call_key, store_tool_result, truncate_build_output_for_model,
+        repeat_call_key, retention_for_tool, store_tool_result, truncate_build_output_for_model,
     };
 
     fn build_result(success: bool) -> ToolResult {
@@ -2760,6 +2792,55 @@ mod tests {
             !matches!(evolution.state, EvolutionState::Generated),
             "done must not complete an evolution whose last build_check failed"
         );
+    }
+
+    #[test]
+    fn done_without_edits_is_conversational_regardless_of_build_result() {
+        for build_success in [None, Some(true), Some(false)] {
+            let mut evolution = Evolution::new("install tailscale");
+            let mut done_gate = DoneGate::default();
+            if let Some(success) = build_success {
+                run_tool_result(&build_result(success), &mut evolution, &mut done_gate);
+            }
+
+            let summary = "Tailscale is already configured.";
+            let mut build_attempts = 0;
+            let (_, should_break) = process_tool_result(
+                "done-call",
+                &ToolResult::Done(summary.to_string()),
+                &mut evolution,
+                &mut done_gate,
+                &mut build_attempts,
+                5,
+                0,
+                0,
+            )
+            .expect("done without edits should succeed");
+
+            assert_eq!(evolution.state, EvolutionState::Conversational);
+            assert_eq!(evolution.summary.as_deref(), Some(summary));
+            assert_eq!(should_break, Some(true));
+            assert_eq!(done_gate.rejected_dones, 0);
+        }
+    }
+
+    #[test]
+    fn done_with_verified_edits_is_generated() {
+        let mut evolution = Evolution::new("prompt");
+        evolution.edits.push(FileEdit {
+            path: "configuration.nix".to_string(),
+            search: "a".to_string(),
+            replace: "b".to_string(),
+        });
+        let mut done_gate = DoneGate::default();
+        run_tool_result(&build_result(true), &mut evolution, &mut done_gate);
+        run_tool_result(
+            &ToolResult::Done("Updated configuration.".to_string()),
+            &mut evolution,
+            &mut done_gate,
+        );
+        assert_eq!(evolution.state, EvolutionState::Generated);
+        assert_eq!(evolution.summary.as_deref(), Some("Updated configuration."));
     }
 
     // The rejection hint must only reference parameters build_check actually
@@ -3032,14 +3113,36 @@ mod tests {
     }
 
     #[test]
-    fn test_filter_evolution_messages_unknown_strategy_defaults_to_none() {
+    fn test_filter_evolution_messages_unknown_strategy_defaults_to_retention() {
         let (_lock, _restore) = set_memory_strategy_for_test("bogus-value");
         let messages = sample_messages();
 
         let out = filter_evolution_messages(&messages, 1000, false);
 
-        // Unknown values should safely default to none behavior.
-        assert!(out.len() == messages.len());
+        // Unknown values default to retention so production never silently
+        // disables compaction and fills the context window.
+        assert!(out.iter().all(
+            |m| !matches!(&m.message, Message::User { content } if content == "Short-lived message")
+        ));
+        assert!(out.iter().any(
+            |m| matches!(&m.message, Message::System { content } if content == "System prompt")
+        ));
+    }
+
+    #[test]
+    fn test_read_file_and_list_files_use_recent_retention() {
+        assert!(matches!(
+            retention_for_tool("read_file"),
+            Retention::Recent { keep_iterations: 4 }
+        ));
+        assert!(matches!(
+            retention_for_tool("list_files"),
+            Retention::Recent { keep_iterations: 4 }
+        ));
+        assert!(matches!(
+            retention_for_tool("search_packages"),
+            Retention::Permanent
+        ));
     }
 
     #[test]

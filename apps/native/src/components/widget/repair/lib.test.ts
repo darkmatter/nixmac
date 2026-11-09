@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { makeGrantedPermissions } from "@/utils/test-fixtures";
+import {
+  APPROVE_IN_LOGIN_ITEMS,
+  makeGrantedPermissions,
+  makeHelperRow,
+} from "@/utils/test-fixtures";
 import { computeRepairPlan, type RepairInputs } from "./lib";
 
 function makeInputs(overrides: Partial<RepairInputs> = {}): RepairInputs {
@@ -9,6 +13,9 @@ function makeInputs(overrides: Partial<RepairInputs> = {}): RepairInputs {
     flakeExists: true,
     nixInstalled: true,
     permissions: makeGrantedPermissions(),
+    helperRow: null,
+    helperPreference: "unset",
+    helperGraceElapsed: false,
     skipPermissions: false,
     nixInstalledOverride: false,
     ...overrides,
@@ -82,6 +89,103 @@ describe("computeRepairPlan", () => {
     ]);
   });
 
+  it("says nothing about a helper the user never asked for", () => {
+    for (const helperPreference of ["unset", "disabled"] as const) {
+      const plan = computeRepairPlan(
+        makeInputs({
+          helperPreference,
+          helperRow: makeHelperRow(),
+          helperGraceElapsed: true,
+        }),
+      );
+      expect(plan.banners).toEqual([]);
+    }
+  });
+
+  it("says nothing about a helper that is answering", () => {
+    const plan = computeRepairPlan(
+      makeInputs({
+        helperPreference: "granted",
+        helperRow: makeHelperRow({ status: "granted" }),
+        helperGraceElapsed: true,
+      }),
+    );
+    expect(plan.banners).toEqual([]);
+  });
+
+  it("waits for the grace period before naming the helper", () => {
+    const plan = computeRepairPlan(
+      makeInputs({
+        helperPreference: "granted",
+        helperRow: makeHelperRow(),
+        helperGraceElapsed: false,
+      }),
+    );
+    expect(plan.banners).toEqual([]);
+  });
+
+  it("banners the wanted-but-silent helper with the row's own sentence", () => {
+    const plan = computeRepairPlan(
+      makeInputs({
+        helperPreference: "granted",
+        helperRow: makeHelperRow(),
+        helperGraceElapsed: true,
+      }),
+    );
+    expect(plan.banners).toEqual([
+      { kind: "helper-inactive", instructions: APPROVE_IN_LOGIN_ITEMS },
+    ]);
+  });
+
+  it("leaves the helper out of the revoked-permissions list", () => {
+    const helperRow = makeHelperRow();
+    const plan = computeRepairPlan(
+      makeInputs({
+        permissions: {
+          permissions: [
+            {
+              id: "full-disk",
+              name: "Full Disk Access",
+              description: "",
+              required: true,
+              canRequestProgrammatically: true,
+              status: "denied",
+            },
+            helperRow,
+          ],
+          allRequiredGranted: false,
+          checkedAt: 1,
+        },
+        helperPreference: "granted",
+        helperRow,
+        helperGraceElapsed: true,
+      }),
+    );
+    expect(plan.banners).toEqual([
+      { kind: "permissions-revoked", missing: [{ id: "full-disk", name: "Full Disk Access" }] },
+      { kind: "helper-inactive", instructions: APPROVE_IN_LOGIN_ITEMS },
+    ]);
+  });
+
+  it("produces exactly one banner when only the helper is missing", () => {
+    const helperRow = makeHelperRow();
+    const plan = computeRepairPlan(
+      makeInputs({
+        permissions: {
+          permissions: [helperRow],
+          allRequiredGranted: false,
+          checkedAt: 1,
+        },
+        helperPreference: "granted",
+        helperRow,
+        helperGraceElapsed: true,
+      }),
+    );
+    expect(plan.banners).toEqual([
+      { kind: "helper-inactive", instructions: APPROVE_IN_LOGIN_ITEMS },
+    ]);
+  });
+
   it("honors the dev-profile skip overrides", () => {
     const plan = computeRepairPlan(
       makeInputs({
@@ -93,6 +197,9 @@ describe("computeRepairPlan", () => {
           allRequiredGranted: false,
           checkedAt: 1,
         },
+        helperPreference: "granted",
+        helperRow: makeHelperRow(),
+        helperGraceElapsed: true,
       }),
     );
     expect(plan).toEqual({ blocking: null, banners: [] });

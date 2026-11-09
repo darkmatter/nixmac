@@ -2,7 +2,6 @@
 
 pub mod build_prompt;
 pub mod find_existing;
-pub mod group_existing;
 pub mod model_calls;
 pub mod pipelines;
 pub mod sumlog;
@@ -15,8 +14,6 @@ use tauri::{AppHandle, Manager, Runtime};
 
 struct SummaryScope {
     changes: Vec<Change>,
-    base_commit_id: i64,
-    hashes: Vec<String>,
 }
 
 /// Wrapper function to summarize changes since HEAD.
@@ -39,40 +36,13 @@ pub async fn summarize_since<R: Runtime>(
         return Ok(None);
     };
 
-    let existing = vec![find_existing::by_base_with_hashes(
-        &pool,
-        scope.base_commit_id,
-        &scope.hashes,
-    )?];
-    let existing_id = existing
-        .iter()
-        .filter_map(|e| e.change_set.as_ref().map(|cs| cs.id))
-        .next();
+    let found = find_existing::for_changes(&pool, &scope.changes)?;
 
-    let has_generated_message = existing.iter().any(|entry| {
-        entry
-            .change_set
-            .as_ref()
-            .and_then(|cs| cs.generated_commit_message.as_deref())
-            .is_some_and(|message| !message.trim().is_empty())
-    });
-
-    let semantic_map = group_existing::from_change_sets(existing);
-
-    if semantic_map.unsummarized_hashes.is_empty() && has_generated_message {
-        return Ok(existing_id);
+    if found.map.unsummarized_hashes.is_empty() && found.has_generated_message() {
+        return Ok(found.snapshot_id);
     }
 
-    pipelines::whole_diff::analyze(
-        scope.changes,
-        app,
-        None,
-        Some(scope.base_commit_id),
-        Some(base_ref),
-        None,
-        evolution_id,
-    )
-    .await
+    pipelines::whole_diff::analyze(scope.changes, app, Some(base_ref), evolution_id).await
 }
 
 /// Recompute the change map for the active summary base ref and record it in
@@ -93,22 +63,23 @@ pub fn change_map_since<R: Runtime>(
     app: &AppHandle<R>,
     base_ref: &str,
 ) -> Result<SemanticChangeMap> {
-    Ok(group_existing::from_change_sets(found_change_sets_since(
-        app, base_ref,
-    )?))
+    Ok(found_since(app, base_ref)?
+        .map(|found| found.map)
+        .unwrap_or_default())
 }
 
-/// Returns all changesets found since `base_ref`, without generating anything new.
-pub fn found_change_sets_since<R: Runtime>(
+/// Reconstructs existing summaries (map + cached snapshot) for the changes since
+/// `base_ref`, without generating anything new. Returns `None` when there is no
+/// summarizable scope (missing ref / no changes).
+pub fn found_since<R: Runtime>(
     app: &AppHandle<R>,
     base_ref: &str,
-) -> Result<Vec<find_existing::FoundSetForCurrent>> {
+) -> Result<Option<find_existing::FoundSummaries>> {
     let pool = app.state::<crate::db::DbPool>();
     let Some(scope) = load_summary_scope(app, base_ref)? else {
-        return Ok(vec![]);
+        return Ok(None);
     };
-    let found = find_existing::by_base_with_hashes(&pool, scope.base_commit_id, &scope.hashes)?;
-    Ok(vec![found])
+    Ok(Some(find_existing::for_changes(&pool, &scope.changes)?))
 }
 
 /// Gets the base commit for the current summary or HEAD if no summary exists, so the frontend can use it as a reference point for showing file diffs, etc.
@@ -137,32 +108,13 @@ fn existing_summary_base_ref(
     .map(str::to_string)
 }
 
-/// Gets the commit for `base_ref` and stores it in the DB if not already present, returning its ID.
-fn store_base_ref_commit(
-    pool: &crate::db::DbPool,
-    config_dir: &str,
-    base_ref: &str,
-) -> Result<Option<i64>> {
-    let Some(hash) = crate::git::get_ref_sha(config_dir, base_ref) else {
-        return Ok(None);
-    };
-    let tree_ref = format!("{base_ref}^{{tree}}");
-    let Some(tree_hash) = crate::git::get_ref_sha(config_dir, &tree_ref) else {
-        return Ok(None);
-    };
-    let now = crate::utils::unix_now();
-    Ok(Some(crate::db::commits::upsert_commit(
-        pool, &hash, &tree_hash, None, now,
-    )?))
-}
-
-/// Helper method to get the changed files and base commit for use in summarization, returning None if the base_ref doesn't exist or there are no changes.
+/// Helper method to get the changed files for use in summarization, returning
+/// None if the base_ref doesn't exist or there are no changes.
 fn load_summary_scope<R: Runtime>(
     app: &AppHandle<R>,
     base_ref: &str,
 ) -> Result<Option<SummaryScope>> {
     let config_dir = crate::storage::store::get_config_dir(app)?;
-    let pool = app.state::<crate::db::DbPool>();
 
     if base_ref == "HEAD" && !crate::git::query::has_head_commit(&config_dir) {
         return Ok(None);
@@ -177,16 +129,7 @@ fn load_summary_scope<R: Runtime>(
         return Ok(None);
     }
 
-    let Some(base_commit_id) = store_base_ref_commit(&pool, &config_dir, base_ref)? else {
-        return Ok(None);
-    };
-    let hashes = changes.iter().map(|change| change.hash.clone()).collect();
-
-    Ok(Some(SummaryScope {
-        changes,
-        base_commit_id,
-        hashes,
-    }))
+    Ok(Some(SummaryScope { changes }))
 }
 
 fn changes_since_ref(config_dir: &str, base_ref: &str) -> Result<Vec<Change>> {

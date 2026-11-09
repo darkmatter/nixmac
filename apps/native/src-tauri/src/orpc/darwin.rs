@@ -3,14 +3,14 @@
 use super::{OrpcCtx, helpers::internal_err};
 use crate::commands::{apply, evolve, rollback};
 use crate::privileged_helper::{
-    protocol::{HelperServiceStatus, SyncAgentLaunchConfig},
-    service,
+    protocol::SyncAgentLaunchConfig,
     sync_agent::{self, SyncAgentStatus},
 };
 use crate::shared_types::{
     AppManagementCheckResult, BuildCheckResult, EtcClobberCheckResult, EvolveCancelResult,
     OkResult, RebuildStatus, RollbackResult,
 };
+use crate::system::helper_permission;
 use orpc::*;
 use serde::{Deserialize, Serialize};
 use specta::Type;
@@ -66,6 +66,28 @@ struct RestoreTargetInput {
 #[serde(rename_all = "camelCase")]
 struct InstallSyncAgentInput {
     config: Option<SyncAgentLaunchConfig>,
+}
+
+/// What one reconciliation run found, for a client that only has to display it:
+/// whether the helper is installed and answering at this build, and the sentence
+/// that says what else is true.
+#[derive(Debug, Deserialize, Serialize, Type)]
+#[serde(rename_all = "camelCase")]
+struct HelperReport {
+    at_this_build: bool,
+    detail: String,
+}
+
+impl HelperReport {
+    fn of(report: &crate::privileged_helper::reconcile::Reconciled) -> Self {
+        Self {
+            at_this_build: matches!(
+                report,
+                crate::privileged_helper::reconcile::Reconciled::AtThisBuild
+            ),
+            detail: helper_permission::describe(report),
+        }
+    }
 }
 
 #[derive(Debug, Deserialize, Serialize, Type)]
@@ -193,16 +215,29 @@ async fn rebuild_status(ctx: OrpcCtx, _input: ()) -> Result<RebuildStatus, ORPCE
         .map_err(|error| internal_err("darwin.rebuildStatus", error))
 }
 
-async fn helper_status(_ctx: OrpcCtx, _input: ()) -> Result<HelperServiceStatus, ORPCError> {
-    Ok(service::status())
+/// One run of the reconciliation function, reported. It takes no decision of its
+/// own and opens nothing — only [`helper_grant`] opens Login Items. The one thing
+/// it may store is the adoption: a registration that already exists is recorded as
+/// the user's earlier opt-in before anything is mutated under it.
+///
+/// The same single run a status refresh makes, and no more than that: a refresh
+/// also starts the convergence loop, and this does not.
+async fn helper_status(ctx: OrpcCtx, _input: ()) -> Result<HelperReport, ORPCError> {
+    Ok(HelperReport::of(&helper_permission::observe(&ctx.app)))
 }
 
-async fn helper_register(_ctx: OrpcCtx, _input: ()) -> Result<HelperServiceStatus, ORPCError> {
-    service::register().map_err(|error| internal_err("darwin.helperRegister", error))
+/// The explicit Grant action. Grant is the only action that may open Login
+/// Items; `permissions.request("privileged-helper")` is the same action reached
+/// from the permission row.
+async fn helper_grant(ctx: OrpcCtx, _input: ()) -> Result<HelperReport, ORPCError> {
+    Ok(HelperReport::of(&helper_permission::grant(&ctx.app)))
 }
 
-async fn helper_unregister(_ctx: OrpcCtx, _input: ()) -> Result<HelperServiceStatus, ORPCError> {
-    service::unregister().map_err(|error| internal_err("darwin.helperUnregister", error))
+/// The explicit Disable action: unregister the helper (deferring while an
+/// activation runs) and
+/// register nothing. No later automatic run overrides it.
+async fn helper_disable(ctx: OrpcCtx, _input: ()) -> Result<HelperReport, ORPCError> {
+    Ok(HelperReport::of(&helper_permission::disable(&ctx.app)))
 }
 
 async fn sync_agent_status(_ctx: OrpcCtx, _input: ()) -> Result<SyncAgentStatus, ORPCError> {
@@ -278,14 +313,14 @@ pub fn routes() -> Router<OrpcCtx> {
             .output(orpc_specta::specta::<RebuildStatus>())
             .handler(rebuild_status),
         "helperStatus" => os::<OrpcCtx>()
-            .output(orpc_specta::specta::<HelperServiceStatus>())
+            .output(orpc_specta::specta::<HelperReport>())
             .handler(helper_status),
-        "helperRegister" => os::<OrpcCtx>()
-            .output(orpc_specta::specta::<HelperServiceStatus>())
-            .handler(helper_register),
-        "helperUnregister" => os::<OrpcCtx>()
-            .output(orpc_specta::specta::<HelperServiceStatus>())
-            .handler(helper_unregister),
+        "helperGrant" => os::<OrpcCtx>()
+            .output(orpc_specta::specta::<HelperReport>())
+            .handler(helper_grant),
+        "helperDisable" => os::<OrpcCtx>()
+            .output(orpc_specta::specta::<HelperReport>())
+            .handler(helper_disable),
         "syncAgentStatus" => os::<OrpcCtx>()
             .output(orpc_specta::specta::<SyncAgentStatus>())
             .handler(sync_agent_status),

@@ -98,7 +98,8 @@ email: string }
  */
 export type AuthStatus = { 
 /**
- * Whether a usable account credential is stored on this device.
+ * Whether any usable account credential is stored on this device. This may
+ * be either a legacy sync credential or the web device API key.
  */
 signedIn: boolean; 
 /**
@@ -114,12 +115,13 @@ keyId: string | null;
  */
 serverUrl: string; 
 /**
- * Whether this device can call server-brokered GitHub endpoints (has a
- * minted Better Auth api-key for the web origin).
+ * Whether this device can authenticate with the web origin using its
+ * stored Better Auth device API key. Hosted models and brokered GitHub
+ * requests share this credential.
  */
-githubReady: boolean; 
+webApiAuthReady: boolean; 
 /**
- * The web-origin account used for GitHub, when `github_ready` is true.
+ * The web-origin account associated with the device API key, when known.
  */
 webAccount: AuthAccount | null }
 
@@ -241,8 +243,6 @@ codex: boolean;
  */
 opencode: boolean }
 
-export type Commit = { id: number; hash: string; treeHash: string; message: string | null; createdAt: number }
-
 /**
  * Result of a successful `git_commit` command. State mirrors (git, evolve,
  * change map) flow through the `*_changed` events.
@@ -348,6 +348,44 @@ displayName: string;
  * Optional one-line description shown under the title.
  */
 description?: string | null; fields: ConfigFieldSchema[] }
+
+export type DecryptSecretInput = { secretId: string }
+
+/**
+ * Whether decryption is available for this specific process or not via its private identity.
+ */
+export type DecryptionCapability = "available" | "unavailable" | "unknown"
+
+/**
+ * A locally discoverable private identity source.
+ */
+export type DecryptionIdentity = { kind: DecryptionIdentityKind; locality: DecryptionIdentityLocality; path: string; available: boolean; 
+/**
+ * Public recipient derived without returning private key material.
+ */
+publicKeys: string[] }
+
+/**
+ * Private identity format. The identity material itself is never returned.
+ */
+export type DecryptionIdentityKind = "ageKeyFile" | "sshKeyPath"
+
+/**
+ * Where a private decryption identity was discovered.
+ */
+export type DecryptionIdentityLocality = 
+/**
+ * Declared by the evaluated nix-darwin configuration.
+ */
+"configuration" | 
+/**
+ * Supplied to the running nixmac process through its environment.
+ */
+"process" | 
+/**
+ * Found at a conventional path on this machine.
+ */
+"machine"
 
 export type EnumVariant = { value: string; label: string }
 
@@ -889,9 +927,18 @@ limit: number | null;
  */
 offset: number | null }
 
+/**
+ * How nixmac handles updates available from the configuration Git repository.
+ */
+export type GitAutoUpdate = "off" | "confirm" | "automatic"
+
+export type GitCommitChangeInput = { filename: string; hash: string; message: string }
+
 export type GitCommitFileInput = { filename: string; message: string }
 
 export type GitCommitInput = { message: string }
+
+export type GitDiscardChangeInput = { filename: string; hash: string }
 
 export type GitDiscardFileInput = { filename: string }
 
@@ -921,11 +968,11 @@ gitStatus: GitStatus | null;
 /**
  * True when a build outside nixmac was detected.
  */
-externalBuildDetected: boolean;
+externalBuildDetected: boolean; 
 /**
  * True when the configured upstream contains a fast-forward update.
  */
-upstreamUpdateAvailable: boolean;
+upstreamUpdateAvailable: boolean; 
 /**
  * True when a rebuild is needed to bring the system up to date with the current working tree.
  */
@@ -1138,7 +1185,7 @@ summaryModel: string | null;
  * Remembered summary model per provider; a missing entry means the
  * provider default is used. Never stores `""`.
  */
-summaryModels: Partial<{ [key in string]: string }>; ollamaApiBaseUrl: string | null; openaiCompatibleApiBaseUrl: string | null; confirmBuild: boolean; confirmClear: boolean; confirmRollback: boolean; autoSummarizeOnFocus: boolean; scanHomebrewOnStartup: boolean; defaultToDiffTab: boolean; experimentalSpinningMascot: boolean; experimentalStreamingEvolve: boolean; developerMode: boolean; pinnedVersion: string | null; updateChannel: UpdateChannel; featureFlagOverrides: Partial<{ [key in string]: string }> | null; 
+summaryModels: Partial<{ [key in string]: string }>; ollamaApiBaseUrl: string | null; openaiCompatibleApiBaseUrl: string | null; confirmBuild: boolean; confirmClear: boolean; confirmRollback: boolean; autoSummarizeOnFocus: boolean; scanHomebrewOnStartup: boolean; defaultToDiffTab: boolean; experimentalSpinningMascot: boolean; experimentalStreamingEvolve: boolean; developerMode: boolean; pinnedVersion: string | null; updateChannel: UpdateChannel; gitAutoUpdate: GitAutoUpdate; featureFlagOverrides: Partial<{ [key in string]: string }> | null; 
 /**
  * Root of an import clone parked on the "which flake dir?" choice
  * (`NeedsFlakeDirChoice`). Recorded so an abandoned choice can be
@@ -1150,9 +1197,33 @@ pendingImportDir: string | null;
 /**
  * Whether or not to auto-format Nix files when making changes to the flakes.
  */
-autoFormatNixFiles: boolean }
+autoFormatNixFiles: boolean; 
+/**
+ * Standing decision about the privileged helper. Read by the helper
+ * reconciliation and by apply; decided only by the grant and disable
+ * actions, which is why it is not writable via `UiPrefsUpdate` and is held
+ * out of settings export/import. `state::preferences` documents which
+ * writers can reach it.
+ */
+helperPreference: HelperPreference }
 
-export type HelperServiceStatus = { label: string; available: boolean; registered: boolean; authorized: boolean; socketAvailable: boolean; detail: string | null }
+/**
+ * The user's standing decision about the privileged helper.
+ * 
+ * Tri-state on purpose. `Unset` means the user never decided — a fresh install,
+ * or one predating the helper's install/replace/remove contract — and is what
+ * lets an existing registration be adopted as an earlier opt-in without
+ * overriding an explicit `Disabled`. It selects a goal and authorizes nothing
+ * else: every trust or termination decision is taken from live observation.
+ */
+export type HelperPreference = "unset" | "granted" | "disabled"
+
+/**
+ * What one reconciliation run found, for a client that only has to display it:
+ * whether the helper is installed and answering at this build, and the sentence
+ * that says what else is true.
+ */
+export type HelperReport = { atThisBuild: boolean; detail: string }
 
 /**
  * A commit entry combining git log data, tag-derived flags, optional DB metadata, and raw diff changes.
@@ -1186,10 +1257,6 @@ isExternal: boolean;
  * Number of files changed in this commit.
  */
 fileCount: number; 
-/**
- * Matching persisted commit row, if one exists.
- */
-commit: Commit | null; 
 /**
  * Semantic summaries for this commit's changes.
  */
@@ -1535,7 +1602,14 @@ description: string;
  */
 required: boolean; 
 /**
- * Whether the app can trigger the system prompt directly.
+ * Whether the app can trigger the system prompt directly. False means the
+ * row's action can only deep-link into System Settings and wait for the
+ * user, which is what the UI renders it as.
+ * 
+ * Fixed per row for the TCC permissions, but not a capability in general:
+ * the unattended sync helper reports it per observation, and it is false
+ * only while macOS holds the registration pending approval in Login Items.
+ * Read it as "is System Settings where the user finishes this, right now".
  */
 canRequestProgrammatically: boolean; 
 /**
@@ -1648,6 +1722,28 @@ errorMessage: string | null;
 systemUntouched: boolean | null }
 
 /**
+ * Public-key format used by a secret recipient.
+ */
+export type RecipientKeyType = "age" | "ssh" | "pgp" | "unknown"
+
+/**
+ * Kind of recipient used for managing secrets.
+ */
+export type RecipientKind = "host" | "user" | "unknown"
+
+/**
+ * A repository configuration source that registers a recipient.
+ * Keeping the backend alongside the path matters because the same public key
+ * can be registered independently for SOPS and agenix.
+ */
+export type RecipientRegistration = { backend: SecretBackend; file: string }
+
+/**
+ * Where the recipient's key material originates.
+ */
+export type RecipientSource = "sshHostKey" | "sshIdentity" | "ageKeyFile" | "pasted" | "github" | "yubikey" | "secureEnclave" | "repository" | "unknown"
+
+/**
  * A recommended prompt based on the user's current macOS settings.
  */
 export type RecommendedPrompt = { 
@@ -1677,6 +1773,35 @@ rollbackStorePath: string | null;
  * Changeset id associated with the rollback target.
  */
 rollbackChangesetId: number | null }
+
+/**
+ * Secret backend used for managing secrets.
+ */
+export type SecretBackend = "sops" | "agenix"
+
+/**
+ * One encrypted secret entry managed in the nix config repo.
+ */
+export type SecretEntry = { id: string; name: string; backend: SecretBackend; file: string; publicRecipients: string[]; publicRecipientsResolved: boolean; recipientIds: string[]; decryptionCapability: DecryptionCapability; sopsKey: string | null }
+
+export type SecretRecipient = { id: string; label: string; kind: RecipientKind; device: string; fingerprint: string; publicKey: string; keyType: RecipientKeyType; source: RecipientSource; inUse: boolean; registrations: RecipientRegistration[] }
+
+export type SecretsVault = { primaryDecryptionIdentityId: string | null; entries: SecretEntry[]; recipients: SecretRecipient[]; decryptionIdentities: DecryptionIdentity[] }
+
+/**
+ * Backend-owned lifecycle for the derived secrets vault.
+ * The vault is potentially very expensive to derive (it evaluates the configured flake), so
+ * Rust refreshes it when its inputs change and the frontend only mirrors this
+ * snapshot. `vault` is cleared while loading to avoid showing data derived
+ * from a previous config directory or host.
+ */
+export type SecretsVaultState = { vault: SecretsVault | null; 
+/**
+ * Whether a client has requested the vault at least once. Dependency
+ * changes refresh only after activation, avoiding Nix evaluation at app
+ * startup for users who never open secrets management.
+ */
+activated: boolean; loading: boolean; error: string | null }
 
 export type SemanticChangeGroup = { 
 /**
@@ -1938,9 +2063,9 @@ export type Procedures = {
     finalizeRestore: Client<Record<never, never>, RestoreTargetInput, void, Error>
     finalizeRollback: Client<Record<never, never>, FinalizeRollbackInput, void, Error>
     fixWithAi: Client<Record<never, never>, FixWithAiInput, void, Error>
-    helperRegister: Client<Record<never, never>, void, HelperServiceStatus, Error>
-    helperStatus: Client<Record<never, never>, void, HelperServiceStatus, Error>
-    helperUnregister: Client<Record<never, never>, void, HelperServiceStatus, Error>
+    helperDisable: Client<Record<never, never>, void, HelperReport, Error>
+    helperGrant: Client<Record<never, never>, void, HelperReport, Error>
+    helperStatus: Client<Record<never, never>, void, HelperReport, Error>
     prepareRestore: Client<Record<never, never>, RestoreTargetInput, void, Error>
     rebuildStatus: Client<Record<never, never>, void, RebuildStatus, Error>
     rollbackErase: Client<Record<never, never>, void, RollbackResult, Error>
@@ -1979,7 +2104,9 @@ export type Procedures = {
   }
   git: {
     commit: Client<Record<never, never>, GitCommitInput, CommitResult, Error>
+    commitChange: Client<Record<never, never>, GitCommitChangeInput, CommitResult, Error>
     commitFile: Client<Record<never, never>, GitCommitFileInput, CommitResult, Error>
+    discardChange: Client<Record<never, never>, GitDiscardChangeInput, OkResult, Error>
     discardFile: Client<Record<never, never>, GitDiscardFileInput, OkResult, Error>
     fileDiffContents: Client<Record<never, never>, GitFileDiffContentsInput, Partial<{ [key in string]: FileDiffContents }>, Error>
     pullFromUpstream: Client<Record<never, never>, void, OkResult, Error>
@@ -2054,6 +2181,11 @@ export type Procedures = {
     applyDefaults: Client<Record<never, never>, ApplyDefaultsInput, ConfigEditApplyResult, Error>
     getRecommendedPrompt: Client<Record<never, never>, void, RecommendedPrompt | null, Error>
     scanDefaults: Client<Record<never, never>, void, SystemDefaultsScan, Error>
+  }
+  secrets: {
+    decryptSecret: Client<Record<never, never>, DecryptSecretInput, string, Error>
+    getState: Client<Record<never, never>, void, SecretsVaultState, Error>
+    refresh: Client<Record<never, never>, void, void, Error>
   }
   settings: {
     export: Client<Record<never, never>, ExportInput, ExportResult | null, Error>

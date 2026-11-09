@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <!-- The privileged helper daemon and the sync agent run with no
+         entitlements: they need none, and an empty allowlist keeps them at
+         least privilege. Passing this file to codesign's entitlements flag
+         matters even empty: without it a nested binary would be signed with
+         the app's broader plist. -->
+</dict>
+</plist>

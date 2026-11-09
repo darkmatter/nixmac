@@ -7,6 +7,7 @@ import type {
   NixInstallState,
   PermissionsState,
   RebuildStatus,
+  SecretsVaultState,
   SemanticChangeMap,
 } from "@/ipc/types";
 import { REBUILD_ERROR_CODES } from "@/lib/errors";
@@ -26,6 +27,7 @@ import { startPermissionsSync } from "./permissions";
 import { refreshHostsSnapshot, startPreferencesSync } from "./preferences";
 import { startPromptHistorySync } from "./prompt-history";
 import { startRebuildSync } from "./rebuild";
+import { startSecretsVaultSync } from "./secrets-vault";
 
 const apiMocks = vi.hoisted(() => ({
   listeners: new Map<string, (event: { payload: unknown }) => void>(),
@@ -40,6 +42,8 @@ const apiMocks = vi.hoisted(() => ({
   listHosts: vi.fn(),
   nixInstallState: null as NixInstallState | null,
   rebuildStatus: null as RebuildStatus | null,
+  secretsVaultState: null as SecretsVaultState | null,
+  getSecretsVaultState: vi.fn<() => Promise<SecretsVaultState>>(),
   refreshPermissions: vi.fn<() => Promise<null>>(),
 }));
 
@@ -104,6 +108,9 @@ vi.mock("@/lib/orpc", () => ({
         Promise.resolve(apiMocks.changeMap),
       ),
     },
+    secrets: {
+      getState: () => apiMocks.getSecretsVaultState(),
+    },
   },
   orpc: {
     history: {
@@ -138,6 +145,16 @@ describe("view model sync", () => {
       darwinRebuildAvailable: null,
     });
     apiMocks.rebuildStatus = makeRebuildStatus();
+    apiMocks.secretsVaultState = {
+      vault: null,
+      activated: true,
+      loading: true,
+      error: null,
+    };
+    apiMocks.getSecretsVaultState.mockReset();
+    apiMocks.getSecretsVaultState.mockImplementation(() =>
+      Promise.resolve(apiMocks.secretsVaultState as SecretsVaultState),
+    );
     apiMocks.refreshPermissions.mockReset();
     apiMocks.refreshPermissions.mockResolvedValue(null);
 
@@ -157,6 +174,7 @@ describe("view model sync", () => {
       promptHistory: [],
       nixInstall: null,
       rebuildStatus: null,
+      secretsVaultState: null,
       rebuildLog: { lines: [], rawLines: [], notices: [] },
       evolveEvents: [],
     });
@@ -407,6 +425,42 @@ describe("view model sync", () => {
 
     stop();
     expect(apiMocks.unlisten).toHaveBeenCalledTimes(3);
+  });
+
+  it("hydrates and mirrors the backend-owned secrets vault state", async () => {
+    const stop = await startSecretsVaultSync();
+
+    expect(viewModelActions.getState().secretsVaultState).toBe(apiMocks.secretsVaultState);
+
+    const failed: SecretsVaultState = {
+      vault: null,
+      activated: true,
+      loading: false,
+      error: "nix eval failed",
+    };
+    apiMocks.listeners.get("secrets_vault_state_changed")?.({ payload: failed });
+    expect(viewModelActions.getState().secretsVaultState).toBe(failed);
+
+    stop();
+    expect(apiMocks.unlisten).toHaveBeenCalledTimes(1);
+  });
+
+  it("does not overwrite a secrets event emitted while hydration is in flight", async () => {
+    const completed: SecretsVaultState = {
+      vault: null,
+      activated: true,
+      loading: false,
+      error: "completed refresh",
+    };
+    apiMocks.getSecretsVaultState.mockImplementationOnce(async () => {
+      apiMocks.listeners.get("secrets_vault_state_changed")?.({ payload: completed });
+      return apiMocks.secretsVaultState as SecretsVaultState;
+    });
+
+    const stop = await startSecretsVaultSync();
+
+    expect(viewModelActions.getState().secretsVaultState).toBe(completed);
+    stop();
   });
 
   it("keeps the rebuild panel dismissed when hydrating a finished run from a prior UI session", async () => {

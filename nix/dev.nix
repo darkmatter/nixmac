@@ -52,6 +52,8 @@ lib.mkIf (!config.container.isBuilding) {
     # came from another (E0514 on CI).
     pkgs.cargo-watch
     pkgs.cargo-nextest
+    # RustSec advisory scan over Cargo.lock: `cargo audit`.
+    pkgs.cargo-audit
     pkgs.flyctl
     pkgs.age
     pkgs.sops
@@ -109,11 +111,11 @@ lib.mkIf (!config.container.isBuilding) {
     export LC_ALL=en_US.UTF-8
     export LC_COLLATE=C
 
-    # Indicate local development environment (for logging, etc.)
-    export NIXMAC_ENV=local
-    export VITE_NIXMAC_ENV=local
+    # Indicate local development environment (for logging, etc.).
+    # NIXMAC_ENV selects the committed profile, so it must be one of the names
+    # apps/native/nixmac-profile.ts and src-tauri/build.rs accept.
+    export NIXMAC_ENV=development
     export NIXMAC_VERSION=local-$(whoami)
-    export VITE_NIXMAC_VERSION=local-$(whoami)
 
     # eval "$(starship init $SHELL)"
   ''
@@ -246,6 +248,13 @@ lib.mkIf (!config.container.isBuilding) {
 
   # Formatting
   treefmt.enable = true;
+  # treefmt.enable registers a devenv:treefmt:run task that formats the tree
+  # on every shell entry (before = ["devenv:enterShell"]). That silently fixes
+  # violations before anything can check them — CI's git-hooks job runs prek
+  # inside `devenv shell`, so its treefmt hook could never fail. Detach the
+  # task from shell entry; formatting happens at commit time via the hook, or
+  # on demand with `treefmt`.
+  tasks."devenv:treefmt:run".before = lib.mkForce [ ];
   treefmt.config = {
     # The commit hook runs treefmt repo-wide; enabling more formatters here
     # expands pre-commit cost and can surface unrelated formatting drift.

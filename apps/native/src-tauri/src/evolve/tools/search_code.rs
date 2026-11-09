@@ -1,4 +1,4 @@
-//! `search_code` tool: ripgrep over the codebase.
+//! `search_code` tool: in-process ripgrep (`pi_uu_grep`) over the codebase.
 
 use anyhow::{Result, anyhow};
 
@@ -10,7 +10,7 @@ use super::{ToolCtx, ToolResult};
 pub(crate) fn definition() -> Tool {
     Tool {
         name: "search_code".to_string(),
-        description: "Search for text patterns in the codebase using ripgrep. \
+        description: "Search for text patterns in the codebase (in-process ripgrep). \
                      This helps locate where functions or variables are defined or used. \
                      Output format: one match per line as file:line:text, where \
                      text is the matching line content."
@@ -37,6 +37,12 @@ pub(crate) fn execute(ctx: &ToolCtx) -> Result<ToolResult> {
         .as_str()
         .ok_or_else(|| anyhow!("search_code: missing pattern"))?;
     let file_pattern = ctx.args["file_pattern"].as_str();
-    let output = execute_search_code(ctx.repo_root, pattern, file_pattern, ctx.gitignore_matcher)?;
+    let output = execute_search_code(
+        ctx.repo_root,
+        pattern,
+        file_pattern,
+        ctx.gitignore_matcher,
+        ctx.nixmac_ignore_matcher,
+    )?;
     Ok(ToolResult::Continue(output))
 }

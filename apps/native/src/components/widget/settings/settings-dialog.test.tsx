@@ -62,4 +62,17 @@ describe("SettingsDialog", () => {
     expect(strip?.parentElement).toBe(backdrop.parentElement);
     expect(backdrop.compareDocumentPosition(strip as Node) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   });
+
+  it("explains the hosted-model action after a logout", async () => {
+    render(<RouterProvider router={router} />);
+    await act(async () => {
+      await nav.openSettings("ai-models", "hosted-auth");
+    });
+
+    expect(await screen.findByRole("alert")).toHaveTextContent(
+      "Log back in or select another model to continue.",
+    );
+    expect(screen.getByRole("button", { name: "Log back in" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Select another model" })).toBeInTheDocument();
+  });
 });

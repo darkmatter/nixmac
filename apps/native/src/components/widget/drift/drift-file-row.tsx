@@ -113,7 +113,7 @@ export function DriftFileRow({
               />
             </div>
           )}
-          {showActions && <DriftActionsMenu filename={filename} />}
+          {showActions && <DriftActionsMenu filename={filename} hash={file.hash} />}
         </div>
 
         <CollapsibleContent className="overflow-hidden data-[state=open]:animate-collapsible-down data-[state=closed]:animate-collapsible-up">

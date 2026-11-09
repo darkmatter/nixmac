@@ -3,6 +3,12 @@
   "plugins": ["import", "typescript", "unicorn", "react", "react-perf", "vitest", "oxc"],
   "overrides": [
     {
+      "files": ["apps/native/src/components/widget/drift/**/*.tsx"],
+      "rules": {
+        "unicorn/no-nested-ternary": "error"
+      }
+    },
+    {
       "files": [
         "**/*.spec.{js,mjs,ts,tsx}",
         "apps/**/e2e-tauri/**/*.mjs",

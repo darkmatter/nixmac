@@ -1,28 +1,151 @@
 name: Build macOS App
+run-name: ${{ github.event_name == 'workflow_dispatch' && format('{0} {1} {2}', inputs.authorize_only && 'Authorize desktop build' || 'Desktop build', inputs.source_ref || github.sha, inputs.request_id || github.run_id) || format('Build macOS App ({0})', github.ref_name) }}
 on:
   push:
     branches: [main]
     tags:
       - "v*"
   pull_request:
-    branches: [main]
   merge_group:
   workflow_dispatch:
+    inputs:
+      source_ref:
+        description: Exact lowercase commit SHA to build (defaults to the workflow revision)
+        required: false
+        type: string
+      request_id:
+        description: Desktop build request identifier
+        required: false
+        type: string
+      authorize_only:
+        description: Verify organization membership without scheduling a build
+        required: false
+        type: boolean
+        default: false
 
 concurrency:
-  group: build-${{ github.event.pull_request.number || github.ref }}
-  cancel-in-progress: true
+  group: build-${{ github.event_name == 'workflow_dispatch' && format('dispatch-{0}', inputs.request_id || github.run_id) || github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name != 'workflow_dispatch' }}
 
 env:
   CARGO_TERM_COLOR: always
-  SOPS_AGE_KEY: ${{ secrets.SOPS_AGE_KEY }}
 jobs:
+  source:
+    name: Admit source revision
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions: {}
+    outputs:
+      sha: ${{ steps.source.outputs.sha }}
+      authorized: ${{ steps.membership.outputs.authorized }}
+    steps:
+      - name: Validate exact build request
+        id: source
+        shell: bash
+        env:
+          SOURCE_REF: ${{ inputs.source_ref }}
+          REQUEST_ID: ${{ inputs.request_id }}
+          DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
+        run: |
+          set -euo pipefail
+          if [[ "$GITHUB_EVENT_NAME" == "workflow_dispatch" ]]; then
+            if [[ "$GITHUB_REF" != "refs/heads/$DEFAULT_BRANCH" ]]; then
+              echo "Manual desktop builds must use the default branch workflow" >&2
+              exit 1
+            fi
+            if [[ "$GITHUB_RUN_ATTEMPT" != "1" ]]; then
+              echo "Manual desktop build reruns are disabled; request a fresh dispatch to reauthorize" >&2
+              exit 1
+            fi
+          fi
+          source_sha="${SOURCE_REF:-$GITHUB_SHA}"
+          if ! [[ "$source_sha" =~ ^[0-9a-f]{40}$ ]]; then
+            echo "source_ref must be a full lowercase commit SHA" >&2
+            exit 1
+          fi
+          if [[ -n "$REQUEST_ID" ]] && ! [[ "$REQUEST_ID" =~ ^[a-zA-Z0-9][a-zA-Z0-9._-]{0,127}$ ]]; then
+            echo "request_id must be 1-128 letters, digits, dots, underscores or hyphens" >&2
+            exit 1
+          fi
+          echo "sha=$source_sha" >> "$GITHUB_OUTPUT"
+
+      # This job never checks out selected source. Only the hosted permission
+      # check receives the App key; selected code runs in later jobs.
+      - name: Create membership read token
+        if: github.event_name == 'workflow_dispatch'
+        id: membership-token
+        uses: actions/create-github-app-token@fee1f7d63c2ff003460e3d139729b119787bc349
+        with:
+          app-id: ${{ secrets.DARKMATTER_APP_ID }}
+          private-key: ${{ secrets.DARKMATTER_APP_PRIVATE_KEY }}
+          owner: darkmatter
+          repositories: nixmac
+          permission-members: read
+
+      - name: Authorize manual build identities
+        if: github.event_name == 'workflow_dispatch'
+        id: membership
+        shell: python3 {0}
+        env:
+          MEMBERSHIP_TOKEN: ${{ steps.membership-token.outputs.token }}
+        run: |
+          import json
+          import os
+          from pathlib import Path
+          import re
+          import urllib.error
+          import urllib.request
+
+          class NoRedirect(urllib.request.HTTPRedirectHandler):
+              def redirect_request(self, req, fp, code, msg, headers, newurl):
+                  return None
+
+          token = os.environ.get("MEMBERSHIP_TOKEN", "")
+          if not token:
+              raise SystemExit("Organization membership credentials are unavailable")
+          identities = [os.environ.get("GITHUB_ACTOR", ""), os.environ.get("GITHUB_TRIGGERING_ACTOR", "")]
+          if any(re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9-]{0,38}", name) is None for name in identities):
+              raise SystemExit("Both authenticated GitHub identities are required")
+          actor_id = os.environ.get("GITHUB_ACTOR_ID", "")
+          if re.fullmatch(r"[1-9][0-9]*", actor_id) is None:
+              raise SystemExit("The authenticated GitHub actor ID is required")
+          opener = urllib.request.build_opener(NoRedirect())
+          for identity in dict.fromkeys(identities):
+              request = urllib.request.Request(
+                  "https://api.github.com/orgs/darkmatter/memberships/" + identity,
+                  headers={"Authorization": "Bearer " + token, "Accept": "application/vnd.github+json",
+                           "X-GitHub-Api-Version": "2026-03-10", "User-Agent": "nixmac-build-admission"},
+              )
+              try:
+                  with opener.open(request, timeout=15) as response:
+                      body = response.read(65537)
+                      if response.status != 200 or len(body) > 65536:
+                          raise ValueError("Invalid membership response")
+                      membership = json.loads(body)
+                  if (not isinstance(membership, dict) or membership.get("state") != "active"
+                          or not isinstance(membership.get("user"), dict)
+                          or membership["user"].get("login", "").lower() != identity.lower()
+                          or membership["user"].get("type") != "User"
+                          or type(membership["user"].get("id")) is not int
+                          or membership["user"]["id"] <= 0
+                          or (identity.lower() == identities[0].lower()
+                              and str(membership["user"]["id"]) != actor_id)
+                          or not isinstance(membership.get("organization"), dict)
+                          or membership["organization"].get("login", "").lower() != "darkmatter"):
+                      raise ValueError("Active organization membership is required")
+              except (OSError, ValueError, TypeError, AttributeError, urllib.error.URLError):
+                  raise SystemExit("Could not verify active darkmatter membership for " + identity) from None
+          with Path(os.environ["GITHUB_OUTPUT"]).open("a") as output:
+              output.write("authorized=true\n")
+          print("Manual build authorized for active darkmatter organization members")
+
   # Run the repo's git-hooks (treefmt, shellcheck) across the whole tree so a
-  # commit made with hooks skipped/broken still gets flagged. Intentionally
-  # not in any `needs` chain: a failure shows up as a red check on the PR but
-  # never blocks rust-tests/build from running.
+  # commit made with hooks skipped/broken still gets flagged. Its failure
+  # shows up as a red check on the PR without blocking rust-tests/build.
   git-hooks:
     name: Git Hooks
+    needs: source
+    if: github.event_name != 'workflow_dispatch' || (github.run_attempt == 1 && !inputs.authorize_only && needs.source.outputs.authorized == 'true')
     runs-on: arc
     timeout-minutes: 30
     permissions:
@@ -30,6 +153,14 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v6
+        with:
+          ref: ${{ needs.source.outputs.sha }}
+
+      - name: Verify checked-out source
+        shell: bash
+        env:
+          EXPECTED_SOURCE_SHA: ${{ needs.source.outputs.sha }}
+        run: test "$(git rev-parse HEAD)" = "$EXPECTED_SOURCE_SHA"
 
       - name: Setup Nix and caches
         uses: ./.github/actions/setup-nix
@@ -51,12 +182,27 @@ jobs:
 
   rust-tests:
     name: Rust Tests (Linux)
+    needs: source
+    if: github.event_name != 'workflow_dispatch' || (github.run_attempt == 1 && !inputs.authorize_only && needs.source.outputs.authorized == 'true')
     runs-on: arc
     permissions:
       contents: read
     steps:
       - name: Checkout repository
         uses: actions/checkout@v6
+        with:
+          ref: ${{ needs.source.outputs.sha }}
+
+      - name: Record checked-out source
+        id: source
+        shell: bash
+        env:
+          EXPECTED_SOURCE_SHA: ${{ needs.source.outputs.sha }}
+        run: |
+          set -euo pipefail
+          source_sha="$(git rev-parse HEAD)"
+          test "$source_sha" = "$EXPECTED_SOURCE_SHA"
+          echo "sha=$source_sha" >> "$GITHUB_OUTPUT"
 
       - name: Install Linux Tauri dependencies
         run: |
@@ -89,15 +235,22 @@ jobs:
         run: cargo test --manifest-path src-tauri/Cargo.toml
         env:
           NIXMAC_ENV: production
+          # Packaged builds hard-fail without the packaged source revision
+          # (build.rs embeds it as the build identity).
+          NIXMAC_BUILD_ID: ${{ steps.source.outputs.sha }}
   build:
-    needs: rust-tests
-    runs-on: [self-hosted, macOS]
+    needs: [source, rust-tests]
+    if: github.event_name != 'workflow_dispatch' || (github.run_attempt == 1 && !inputs.authorize_only && needs.source.outputs.authorized == 'true')
+    runs-on: [self-hosted, macOS, ARM64]
+    env:
+      SOPS_AGE_KEY: ${{ secrets.SOPS_AGE_KEY }}
     permissions:
       contents: write
     steps:
       - name: Checkout repository
         uses: actions/checkout@v6
         with:
+          ref: ${{ needs.source.outputs.sha }}
           fetch-depth: 0
           persist-credentials: true
           clean: false
@@ -108,6 +261,17 @@ jobs:
           git reset --hard
           git clean -ffdx -e .devenv/ -e .devenv-ci/
 
+      - name: Record checked-out source
+        id: source
+        shell: bash
+        env:
+          EXPECTED_SOURCE_SHA: ${{ needs.source.outputs.sha }}
+        run: |
+          set -euo pipefail
+          source_sha="$(git rev-parse HEAD)"
+          test "$source_sha" = "$EXPECTED_SOURCE_SHA"
+          echo "sha=$source_sha" >> "$GITHUB_OUTPUT"
+
       - name: Setup Nix and caches
         uses: ./.github/actions/setup-nix
         with:
@@ -117,6 +281,24 @@ jobs:
         uses: ./.github/actions/setup-devenv
         with:
           darkmatter-cachix-auth-token: ${{ secrets.DARKMATTER_CACHIX_AUTH_TOKEN }}
+
+      # Release-script tests (signing, install-name normalization, DMG
+      # portability). Nothing else executes these test harnesses, so without
+      # this step a stale or broken test goes unnoticed while the scripts it
+      # guards keep changing. Runs before the expensive build steps.
+      #
+      # Runs with the devenv profile prepended to PATH (setup-devenv above) —
+      # the same environment as the release normalize/sign steps below, GNU
+      # coreutils shadowing included. Reproduce locally with:
+      #   devenv shell -- bash ops/scripts/release/<name>.test.sh
+      - name: Release script tests
+        shell: bash
+        run: |
+          set -euo pipefail
+          for test in ops/scripts/release/*.test.sh; do
+            echo "==> $test"
+            bash "$test"
+          done
 
       - name: Setup Xcode Swift toolchain
         uses: ./.github/actions/setup-xcode
@@ -152,7 +334,27 @@ jobs:
       - name: Cargo clippy
         run: cargo clippy --workspace --all-targets --features nixmac/codegen -- -D warnings
         env:
-          NIXMAC_ENV: prod
+          NIXMAC_ENV: production
+          # Packaged builds hard-fail without the packaged source revision.
+          NIXMAC_BUILD_ID: ${{ steps.source.outputs.sha }}
+
+      # Same test set as the Linux `rust-tests` job, run again here because a
+      # large share of this crate's behavioral coverage is
+      # `cfg(target_os = "macos")` and compiles away to nothing on Linux — the
+      # privileged helper's socket serving, peer authentication, and launchd
+      # paths among it. Without this step CI can be green while none of it has
+      # ever executed.
+      #
+      # Placed with clippy: after the toolchain and passkey patch are in place,
+      # before the sccache setup and the expensive release build, so a failure
+      # is fast and cheap. `NIXMAC_ENV`/`NIXMAC_BUILD_ID` match the clippy and
+      # build steps — build.rs reruns on those, so a different value here would
+      # force a rebuild of everything that follows.
+      - name: Rust unit tests (macOS)
+        run: cargo test -p nixmac
+        env:
+          NIXMAC_ENV: production
+          NIXMAC_BUILD_ID: ${{ steps.source.outputs.sha }}
 
       # Decide what kind of build this is:
       #   - tag:     push of refs/tags/v* → ship that exact version on stable
@@ -164,7 +366,14 @@ jobs:
       # a release is created in GitHub (which pushes a v* tag).
       - name: Compute release version
         id: release-version
-        run: bash ops/scripts/release/compute-version.sh
+        run: |
+          # Older source commits may still classify a manual tag as a release.
+          # The trusted workflow keeps every dispatch build-only.
+          if [[ "$GITHUB_EVENT_NAME" == "workflow_dispatch" ]]; then
+            printf 'mode=branch\nversion=\ntag=\n' >> "$GITHUB_OUTPUT"
+          else
+            bash ops/scripts/release/compute-version.sh
+          fi
 
       - name: Setup sccache
         shell: bash
@@ -187,7 +396,7 @@ jobs:
           fi
 
       - name: Restore sccache
-        uses: actions/cache/restore@v4
+        uses: actions/cache/restore@v5
         with:
           path: ${{ runner.temp }}/sccache
           key: sccache-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('Cargo.lock') }}
@@ -204,7 +413,10 @@ jobs:
         env:
           RELEASE_MODE: ${{ steps.release-version.outputs.mode }}
           RELEASE_VERSION: ${{ steps.release-version.outputs.version }}
-        run: bash ops/scripts/release/sync-version.sh
+          NIXMAC_SOURCE_SHA: ${{ steps.source.outputs.sha }}
+        # The legacy script uses GITHUB_SHA for the version suffix. Override
+        # only that child process so old source revisions receive the right SHA.
+        run: env GITHUB_SHA="$NIXMAC_SOURCE_SHA" bash ops/scripts/release/sync-version.sh
       - name: Check for code signing secrets
         id: check-secrets
         shell: 'sops exec-env ops/secrets/secrets.sops.json "bash -e {0}"'
@@ -234,10 +446,51 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           # Pass DSNs and build metadata into the tauri action step so build.rs can read them
           SENTRY_DSN: ${{ secrets.SENTRY_DSN }}
-          NIXMAC_ENV: prod
+          NIXMAC_ENV: production
+          # Build identity compiled into the GUI, helper, and sync agent; the
+          # sidecar build inherits it through the environment.
+          NIXMAC_BUILD_ID: ${{ steps.source.outputs.sha }}
           NIXMAC_VERSION: ${{ steps.sync-version.outputs.build_version }}
           VITE_SERVER_URL: ${{ secrets.VITE_SERVER_URL }}
           SUBMITTED_FEEDBACK_DSN: ${{ secrets.SUBMITTED_FEEDBACK_DSN }}
+
+      # An unset NIXMAC_ENV selects the development profile, which turns the
+      # permissions gate off. Check the artifacts themselves name production,
+      # rather than trusting that the env above reached both bakers: the
+      # frontend bundle carries its profile as a Vite define, the binary as a
+      # build.rs embed, and they are baked by separate code paths.
+      #
+      # esbuild may drop the quotes on the object key, so both greps accept the
+      # key quoted or bare. The second one is the important half: a release
+      # bundle that carries a non-production profile at all has a path back to
+      # one, whether or not it also carries the right one.
+      - name: Verify artifacts carry the production profile
+        run: |
+          set -euo pipefail
+
+          if [ ! -d apps/native/dist ]; then
+            echo "ERROR: apps/native/dist is missing; the frontend was not built"
+            exit 1
+          fi
+          if ! grep -rqE '"?NIXMAC_ENV"?:"production"' apps/native/dist; then
+            echo "ERROR: frontend bundle in apps/native/dist does not carry the production profile"
+            exit 1
+          fi
+          if grep -rqE '"?NIXMAC_ENV"?:"(development|e2e)"' apps/native/dist; then
+            echo "ERROR: frontend bundle in apps/native/dist also carries a non-production profile"
+            grep -rhoE '"?NIXMAC_ENV"?:"(development|e2e)"' apps/native/dist | sort -u
+            exit 1
+          fi
+
+          APP_PATH=$(find target/release/bundle/macos -name "*.app" -type d 2>/dev/null | sed -n '1p' || true)
+          if [ -z "$APP_PATH" ]; then
+            echo "ERROR: no .app bundle found under target/release/bundle/macos"
+            exit 1
+          fi
+          if ! grep -qa '"NIXMAC_ENV":"production"' "$APP_PATH/Contents/MacOS/nixmac"; then
+            echo "ERROR: $APP_PATH does not embed the production profile"
+            exit 1
+          fi
 
       - name: Unit Test frontend
         working-directory: apps/native
@@ -245,7 +498,7 @@ jobs:
 
       - name: Save sccache
         if: always()
-        uses: actions/cache/save@v4
+        uses: actions/cache/save@v5
         with:
           path: ${{ runner.temp }}/sccache
           key: sccache-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('Cargo.lock') }}
@@ -322,12 +575,75 @@ jobs:
           if [ -n "$DMG_PATH" ]; then
             echo "dmg_name=$(basename "$DMG_PATH")" >> "$GITHUB_OUTPUT"
           fi
+      - name: Write exact build provenance
+        shell: python3 {0}
+        env:
+          NIXMAC_SOURCE_SHA: ${{ steps.source.outputs.sha }}
+          NIXMAC_REQUEST_ID: ${{ inputs.request_id }}
+        run: |
+          import hashlib
+          import json
+          import os
+          from pathlib import Path
+          import plistlib
+          import re
+          import subprocess
+
+          source_sha = os.environ["NIXMAC_SOURCE_SHA"]
+          if re.fullmatch(r"[0-9a-f]{40}", source_sha) is None:
+              raise ValueError("Build provenance requires an exact source SHA")
+          actual_sha = subprocess.check_output(["git", "rev-parse", "HEAD"], text=True).strip()
+          if actual_sha != source_sha:
+              raise ValueError("Source checkout changed during the build")
+          apps = list(Path("target/release/bundle/macos").glob("*.app"))
+          dmgs = list(Path("target/release/bundle/dmg").glob("*.dmg"))
+          if len(apps) != 1 or len(dmgs) != 1 or not dmgs[0].is_file() or dmgs[0].is_symlink():
+              raise ValueError("Expected exactly one application bundle and one regular DMG")
+          with (apps[0] / "Contents/Info.plist").open("rb") as stream:
+              bundle = plistlib.load(stream)
+          if bundle.get("CFBundleIdentifier") != "com.darkmatter.nixmac" or bundle.get("NixmacBuildId") != source_sha:
+              raise ValueError("Built application identity does not match the requested source")
+          executable = bundle.get("CFBundleExecutable", "")
+          if not executable or Path(executable).name != executable:
+              raise ValueError("Invalid application executable name")
+          architectures = sorted(set(subprocess.check_output([
+              "/usr/bin/lipo", "-archs", str(apps[0] / "Contents/MacOS" / executable),
+          ], text=True).split()))
+          if architectures != ["arm64"]:
+              raise ValueError("Desktop build requires an ARM64 application")
+          digest = hashlib.sha256()
+          with dmgs[0].open("rb") as stream:
+              for chunk in iter(lambda: stream.read(1024 * 1024), b""):
+                  digest.update(chunk)
+          size = dmgs[0].stat().st_size
+          if size <= 0:
+              raise ValueError("Built DMG is empty")
+          provenance = {
+              "schemaVersion": "nixmac.desktop-build.v1",
+              "repository": os.environ["GITHUB_REPOSITORY"],
+              "sourceSha": source_sha,
+              "requestId": os.environ.get("NIXMAC_REQUEST_ID") or None,
+              "event": os.environ["GITHUB_EVENT_NAME"],
+              "workflowRef": os.environ["GITHUB_WORKFLOW_REF"],
+              "workflowSha": os.environ["GITHUB_WORKFLOW_SHA"],
+              "runId": int(os.environ["GITHUB_RUN_ID"]),
+              "runAttempt": int(os.environ["GITHUB_RUN_ATTEMPT"]),
+              "architectures": architectures,
+              "bundleIdentifier": bundle["CFBundleIdentifier"],
+              "bundleVersion": bundle["CFBundleShortVersionString"],
+              "bundleBuildId": bundle["NixmacBuildId"],
+              "dmg": {"fileName": dmgs[0].name, "bytes": size, "sha256": digest.hexdigest()},
+          }
+          output = dmgs[0].parent / "nixmac-build-provenance.json"
+          output.write_text(json.dumps(provenance, indent=2) + "\n")
       - name: Upload DMG artifact
         uses: actions/upload-artifact@v7
         with:
           name: nixmac-macos-dmg
-          path: target/release/bundle/dmg/*.dmg
-          if-no-files-found: warn
+          path: |
+            target/release/bundle/dmg/*.dmg
+            target/release/bundle/dmg/nixmac-build-provenance.json
+          if-no-files-found: error
       - name: Upload app bundle artifact
         uses: actions/upload-artifact@v7
         with:
@@ -341,7 +657,7 @@ jobs:
       # matching `-test.N` so we can exercise the full signing/notarization +
       # DMG swap path on a disposable tag without publishing a public release.
       - name: Create Release
-        if: steps.release-version.outputs.mode == 'tag' &&
+        if: github.event_name == 'push' && steps.release-version.outputs.mode == 'tag' &&
           !contains(steps.release-version.outputs.tag, '-test.')
         uses: softprops/action-gh-release@v2
         with:
@@ -358,7 +674,7 @@ jobs:
       # signing/notarization + DMG swap path on a disposable tag without
       # overwriting latest.json on the updater CDN.
       - name: Upload to R2
-        if: (steps.release-version.outputs.mode == 'tag' ||
+        if: github.event_name == 'push' && (steps.release-version.outputs.mode == 'tag' ||
           steps.release-version.outputs.mode == 'develop') &&
           !contains(steps.release-version.outputs.tag, '-test.')
         shell: 'sops exec-env ops/secrets/secrets.sops.json "bash -e {0}"'
@@ -374,7 +690,7 @@ jobs:
       # Linear releases track what actually shipped. Skipped for `-test.N` tags
       # to match the GitHub Release / R2 upload skip.
       - name: Sync release to Linear
-        if: steps.release-version.outputs.mode == 'tag' &&
+        if: github.event_name == 'push' && steps.release-version.outputs.mode == 'tag' &&
           !contains(steps.release-version.outputs.tag, '-test.')
         uses: linear/linear-release-action@v0
         with:
