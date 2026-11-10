@@ -35,6 +35,7 @@ import { usePanicHandler } from "@/hooks/use-panic-handler";
 import { usePermissions } from "@/hooks/use-permissions";
 import { useTrayEvents } from "@/hooks/use-tray-events";
 import { markBootRenderStage, markBootStage } from "@/lib/boot-diagnostics";
+import { isDevelopmentBuild, isProductionBuild } from "@/lib/env";
 import { SplashScreen, type SplashStage } from "@/components/widget/layout/splash-screen";
 import { useEvolveMascot } from "@/hooks/use-evolve-mascot";
 import { useHostedModelAuthGuard } from "@/hooks/use-hosted-model-auth-guard";
@@ -92,7 +93,7 @@ export function DarwinWidget() {
 
   // Set up test helpers for error handlers and widget store (development only)
   useEffect(() => {
-    if (import.meta.env.DEV) {
+    if (isDevelopmentBuild) {
       setupErrorTestHelpers();
       setupWidgetTestHelpers();
     }
@@ -131,7 +132,7 @@ export function DarwinWidget() {
           // Escape/Cmd+W without relying on a later native event to reveal mode.
           if (modeProbeAttempts < 3) {
             modeProbeRetry = setTimeout(probePopoverMode, 250);
-          } else if (import.meta.env.PROD) {
+          } else if (isProductionBuild) {
             console.error("Failed to read main-window mode:", error);
           }
         });
@@ -206,7 +207,7 @@ export function DarwinWidget() {
           ? dismissMainWindowClose(request.token)
           : dismissMainWindowPopover();
         void dismissal.catch((error) => {
-          if (import.meta.env.PROD) {
+          if (isProductionBuild) {
             console.error("Failed to dismiss menu-bar popover:", error);
           }
         });
@@ -254,7 +255,7 @@ export function DarwinWidget() {
         }
       })
       .catch((error) => {
-        if (import.meta.env.PROD) {
+        if (isProductionBuild) {
           console.error("Failed to listen for native Escape events:", error);
         }
       });
@@ -274,7 +275,7 @@ export function DarwinWidget() {
           // consumes Escape before its asynchronous dismissal has completed.
           if (escape.defaultPrevented && !request.dismissRequested) {
             void acknowledgeMainWindowClose(request.token).catch((error) => {
-              if (import.meta.env.PROD) {
+              if (isProductionBuild) {
                 console.error("Failed to acknowledge native close request:", error);
               }
             });
@@ -291,7 +292,7 @@ export function DarwinWidget() {
         }
       })
       .catch((error) => {
-        if (import.meta.env.PROD) {
+        if (isProductionBuild) {
           console.error("Failed to listen for native close requests:", error);
         }
       });
