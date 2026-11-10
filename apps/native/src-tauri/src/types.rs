@@ -589,31 +589,64 @@ pub(crate) fn emit_evolve_event<R: tauri::Runtime>(app: &tauri::AppHandle<R>, ev
     }
 
     if let Some(window) = app.get_webview_window("main") {
-        let is_question = matches!(event.event_type, EvolveEventType::Question);
-        let is_answered = matches!(event.event_type, EvolveEventType::Answered);
+        let attention = evolve_event_attention(&event.event_type, crate::main_window::active(app));
         if let Err(e) = tauri::Emitter::emit(&window, EVOLVE_EVENT_CHANNEL, &event) {
             log::warn!("Failed to emit evolve event: {}", e);
         }
-        if is_question {
-            notify_question(app, &window, &event.summary);
-        } else if is_answered && crate::main_window::active(app).is_popover() {
-            crate::attention::clear_work(app);
+        match attention {
+            EvolveEventAttention::None => {}
+            EvolveEventAttention::InputRequired => crate::attention::input_required(app),
+            EvolveEventAttention::QuestionNotificationIfUnfocused => {
+                notify_question(app, &window, &event.summary);
+            }
+            EvolveEventAttention::ClearWork => crate::attention::clear_work(app),
         }
     }
 }
 
-/// OS-level nudge for a question that arrived while the app was unfocused:
-/// a notification plus a request for attention (dock bounce on macOS).
+/// What an evolve event asks of native attention. Decided from the event type
+/// and window mode alone, so the popover-versus-control routing is testable
+/// without a running app.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum EvolveEventAttention {
+    None,
+    /// The popover's own notification backend posts the input-required
+    /// notice, whether or not the window is focused, because the popover
+    /// owns the process-wide macOS notification delegate.
+    InputRequired,
+    /// Control-window mode: request attention and post a plugin
+    /// notification, but only while the window is unfocused.
+    QuestionNotificationIfUnfocused,
+    /// A question was answered in the popover: retire its pending notice.
+    ClearWork,
+}
+
+fn evolve_event_attention(
+    event_type: &EvolveEventType,
+    mode: crate::main_window::MainWindowMode,
+) -> EvolveEventAttention {
+    match event_type {
+        EvolveEventType::Question
+            if crate::attention::plugin_notification_backend_allowed_for_mode(
+                mode.is_popover(),
+            ) =>
+        {
+            EvolveEventAttention::QuestionNotificationIfUnfocused
+        }
+        EvolveEventType::Question => EvolveEventAttention::InputRequired,
+        EvolveEventType::Answered if mode.is_popover() => EvolveEventAttention::ClearWork,
+        _ => EvolveEventAttention::None,
+    }
+}
+
+/// OS-level nudge for a question that arrived while the control window was
+/// unfocused: a notification plus a request for attention (dock bounce on
+/// macOS).
 fn notify_question<R: tauri::Runtime>(
     app: &tauri::AppHandle<R>,
     window: &tauri::WebviewWindow<R>,
     question: &str,
 ) {
-    if !crate::attention::plugin_notification_backend_allowed(app) {
-        crate::attention::input_required(app);
-        return;
-    }
-
     if window.is_focused().unwrap_or(false) {
         return;
     }
@@ -637,6 +670,66 @@ fn notify_question<R: tauri::Runtime>(
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    mod evolve_event_attention_routing {
+        use super::super::{EvolveEventAttention, evolve_event_attention};
+        use crate::main_window::MainWindowMode;
+        use crate::shared_types::EvolveEventType;
+
+        #[test]
+        fn a_question_in_the_control_window_uses_the_unfocused_plugin_notification() {
+            assert_eq!(
+                evolve_event_attention(&EvolveEventType::Question, MainWindowMode::Control),
+                EvolveEventAttention::QuestionNotificationIfUnfocused
+            );
+        }
+
+        #[test]
+        fn a_question_in_the_popover_goes_through_the_owned_attention_backend() {
+            let expected = if cfg!(target_os = "macos") {
+                EvolveEventAttention::InputRequired
+            } else {
+                // Off macOS there is no shared delegate to protect, so the
+                // plugin path stays available in both modes.
+                EvolveEventAttention::QuestionNotificationIfUnfocused
+            };
+            assert_eq!(
+                evolve_event_attention(&EvolveEventType::Question, MainWindowMode::Popover),
+                expected
+            );
+        }
+
+        #[test]
+        fn an_answer_clears_pending_work_attention_only_in_the_popover() {
+            assert_eq!(
+                evolve_event_attention(&EvolveEventType::Answered, MainWindowMode::Popover),
+                EvolveEventAttention::ClearWork
+            );
+            assert_eq!(
+                evolve_event_attention(&EvolveEventType::Answered, MainWindowMode::Control),
+                EvolveEventAttention::None
+            );
+        }
+
+        #[test]
+        fn other_events_never_route_attention_in_either_mode() {
+            for mode in [MainWindowMode::Control, MainWindowMode::Popover] {
+                for event_type in [
+                    EvolveEventType::Start,
+                    EvolveEventType::Thinking,
+                    EvolveEventType::Complete,
+                    EvolveEventType::Error,
+                    EvolveEventType::Info,
+                ] {
+                    assert_eq!(
+                        evolve_event_attention(&event_type, mode),
+                        EvolveEventAttention::None,
+                        "{event_type:?} in {mode:?}"
+                    );
+                }
+            }
+        }
+    }
 
     #[test]
     fn thinking_summary_should_be_first_sentence_of_thought() {
