@@ -7,16 +7,24 @@ const mocks = vi.hoisted(() => ({
   acknowledgeClose: vi.fn<(input: { token: number }) => Promise<boolean>>(),
 }));
 
-vi.mock("@/lib/orpc", () => ({
-  client: {
-    mainWindow: mocks,
-  },
-}));
+vi.mock("@/lib/orpc", async () => {
+  const { createTanstackQueryUtils } = await import("@orpc/tanstack-query");
+  const { QueryClient } = await import("@tanstack/react-query");
+  const client = { mainWindow: mocks };
+  return {
+    client,
+    orpc: createTanstackQueryUtils(client),
+    queryClient: new QueryClient(),
+  };
+});
 
 describe("main window", () => {
-  beforeEach(() => {
+  beforeEach(async () => {
     vi.resetModules();
     vi.clearAllMocks();
+    // The mocked module, and so its query cache, survives resetModules.
+    const { queryClient } = await import("@/lib/orpc");
+    queryClient.clear();
   });
 
   it("shares one launch-scoped popover-mode request", async () => {
@@ -36,8 +44,10 @@ describe("main window", () => {
     const { isMainWindowPopover } = await import("./main-window");
 
     const initial = isMainWindowPopover();
-    expect(isMainWindowPopover()).toBe(initial);
+    const concurrent = isMainWindowPopover();
     await expect(initial).rejects.toBe(error);
+    await expect(concurrent).rejects.toBe(error);
+    expect(mocks.isPopover).toHaveBeenCalledOnce();
 
     await expect(Promise.all([isMainWindowPopover(), isMainWindowPopover()])).resolves.toEqual([
       false,
