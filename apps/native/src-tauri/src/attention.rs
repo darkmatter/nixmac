@@ -611,16 +611,28 @@ pub(crate) fn test<R: Runtime>(app: &AppHandle<R>) {
     }
 }
 
+/// The popover's owned macOS notification backend.
+///
+/// It uses `NSUserNotificationCenter`, deprecated since macOS 11, on purpose:
+/// `tauri-plugin-notification` posts through the same center on macOS (via
+/// `notify-rust` and `mac-notification-sys`) and exposes no click callback,
+/// so it cannot reopen the popover. Moving to `UNUserNotificationCenter`
+/// needs its own authorization request, block-based delegate callbacks and a
+/// plan for the plugin's sends in control-window mode, so it is tracked as
+/// its own change (ENG-1449).
+///
+/// `#[allow(deprecated)]` is scoped to each item that touches the deprecated
+/// types, never the whole module, so any other deprecation here still warns.
 #[cfg(target_os = "macos")]
-#[allow(deprecated)]
 mod macos {
     use std::cell::RefCell;
 
     use objc2::runtime::ProtocolObject;
     use objc2::{MainThreadOnly, define_class, msg_send, rc::Retained};
+    use objc2_foundation::{MainThreadMarker, NSObject, NSObjectProtocol, NSString};
+    #[allow(deprecated)]
     use objc2_foundation::{
-        MainThreadMarker, NSObject, NSObjectProtocol, NSString, NSUserNotification,
-        NSUserNotificationCenter, NSUserNotificationCenterDelegate,
+        NSUserNotification, NSUserNotificationCenter, NSUserNotificationCenterDelegate,
     };
 
     use super::{
@@ -696,6 +708,7 @@ mod macos {
         }
     }
 
+    #[allow(deprecated)]
     struct Installed {
         center: Retained<NSUserNotificationCenter>,
         delegate: Retained<AttentionDelegate>,
