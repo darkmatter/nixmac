@@ -68,6 +68,18 @@ export const nixmacEnvironment = settings.nixmacEnv;
 /** App version from the merged profile (`NIXMAC_VERSION`). */
 export const nixmacVersion = settings.nixmacVersion;
 
+/**
+ * True in Vite production builds (the packaged app); false under the dev
+ * server and in tests. App code reads this instead of `import.meta.env.PROD`.
+ */
+export const isProductionBuild: boolean = import.meta.env.PROD;
+
+/**
+ * True under the Vite dev server. App code reads this instead of
+ * `import.meta.env.DEV`.
+ */
+export const isDevelopmentBuild: boolean = import.meta.env.DEV;
+
 export function getWebSiteUrl(): string {
 	return settings.viteServerUrl || "https://nixmac.com";
 }
