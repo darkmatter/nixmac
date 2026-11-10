@@ -430,7 +430,7 @@ pub(crate) fn install(app: &AppHandle) -> Result<(), String> {
     install_backend()
 }
 
-fn plugin_notification_backend_allowed_for_mode(is_popover: bool) -> bool {
+pub(crate) fn plugin_notification_backend_allowed_for_mode(is_popover: bool) -> bool {
     #[cfg(target_os = "macos")]
     {
         !is_popover
