@@ -361,6 +361,7 @@ describe("PermissionsPanel — the unattended sync helper row", () => {
     permissionsState.mockReturnValue(helperRow("granted", "installed and answering"));
     mockDisableHelper.mockResolvedValue({
       atThisBuild: false,
+      phase: "disabled",
       detail: "The unattended sync helper is disabled and has been removed.",
     });
 

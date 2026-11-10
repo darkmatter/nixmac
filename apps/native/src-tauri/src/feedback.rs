@@ -390,6 +390,7 @@ pub fn gather_app_state(app: &AppHandle, feedback_type: &str) -> Value {
         "configDir": config_dir,
         "hostAttr": host_attr,
         "feedbackType": feedback_type,
+        "helperFailure": crate::system::helper_permission::last_failure_detail(),
         "evolution": evolution_state,
         "timestamp": Utc::now().to_rfc3339(),
     })
@@ -849,6 +850,7 @@ regex = "token=([A-Za-z0-9]+)"
         let mut metadata = empty_metadata();
         metadata.current_app_state_snapshot = Some(json!({
             "token": "token=abc123",
+            "helperFailure": "SMAppServiceErrorDomain 1: token=abc123",
             "nested": { "value": "token=xyz" }
         }));
         metadata.ai_provider_model_info = Some(types::FeedbackAiProviderModelInfo {
@@ -868,6 +870,9 @@ regex = "token=([A-Za-z0-9]+)"
         assert!(redacted_fields.contains(&"ai_provider_model_info"));
 
         let state = metadata.current_app_state_snapshot.unwrap();
+        let helper_failure = state["helperFailure"].as_str().unwrap();
+        assert!(helper_failure.contains("SMAppServiceErrorDomain 1"));
+        assert!(!helper_failure.contains("abc123"));
         assert!(
             state
                 .get("token")
