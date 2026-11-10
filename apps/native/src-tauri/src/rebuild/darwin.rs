@@ -380,8 +380,18 @@ fn apply_end_attention(payload: &serde_json::Value) -> ApplyEndAttention {
         return ApplyEndAttention::Silent;
     }
     match payload.get("error_type").and_then(|value| value.as_str()) {
+        // The user cancelled the macOS prompt themselves, so there is nothing
+        // new to tell them while nixmac is hidden.
         Some("user_cancelled") => ApplyEndAttention::Silent,
-        Some("activation_refused") => ApplyEndAttention::BuildBlocked,
+        // A blocker the user can resolve (another activation running, files in
+        // /etc to rename, the App Management permission, administrator
+        // credentials), not a failed build. `authorization_denied` stays
+        // visible: its classifier also matches broad text such as "not
+        // permitted", so silence could hide an activation the user never
+        // declined.
+        Some("activation_refused" | "etc_clobber" | "app_management" | "authorization_denied") => {
+            ApplyEndAttention::BuildBlocked
+        }
         _ => ApplyEndAttention::BuildFailed,
     }
 }
@@ -1412,7 +1422,8 @@ fn run_darwin_rebuild(
 mod activation_safety_tests {
     use super::{
         ActivateResult, ApplyEndAttention, activation_failure_left_system_untouched,
-        apply_end_attention, classify_activate_error,
+        app_management_error_payload, apply_end_attention, classify_activate_error,
+        etc_clobber_error_payload, handle_activation_error,
     };
 
     fn failed_activation(stdout: &str, stderr: &str) -> ActivateResult {
@@ -1494,6 +1505,13 @@ mod activation_safety_tests {
         assert!(!activation_failure_left_system_untouched("generic_error"));
     }
 
+    fn attention_for(error_type: &str) -> ApplyEndAttention {
+        apply_end_attention(&serde_json::json!({
+            "ok": false,
+            "error_type": error_type,
+        }))
+    }
+
     #[test]
     fn apply_end_attention_is_silent_for_success_and_user_cancellation() {
         assert_eq!(
@@ -1501,33 +1519,83 @@ mod activation_safety_tests {
             ApplyEndAttention::Silent
         );
         assert_eq!(
-            apply_end_attention(&serde_json::json!({
-                "ok": false,
-                "error_type": "user_cancelled",
-            })),
-            ApplyEndAttention::Silent
+            attention_for("user_cancelled"),
+            ApplyEndAttention::Silent,
+            "user_cancelled is the user's own answer to a macOS prompt"
         );
     }
 
     #[test]
-    fn apply_end_attention_distinguishes_refusal_from_failure() {
-        assert_eq!(
-            apply_end_attention(&serde_json::json!({
-                "ok": false,
-                "error_type": "activation_refused",
-            })),
-            ApplyEndAttention::BuildBlocked
-        );
-        assert_eq!(
-            apply_end_attention(&serde_json::json!({
-                "ok": false,
-                "error_type": "generic_error",
-            })),
-            ApplyEndAttention::BuildFailed
-        );
+    fn apply_end_attention_reports_user_actionable_blockers_as_blocked() {
+        for error_type in [
+            "activation_refused",
+            "etc_clobber",
+            "app_management",
+            "authorization_denied",
+        ] {
+            assert_eq!(
+                attention_for(error_type),
+                ApplyEndAttention::BuildBlocked,
+                "{error_type} is a blocker the user can resolve, not a failed build"
+            );
+        }
+    }
+
+    #[test]
+    fn apply_end_attention_reports_other_failures_as_failed() {
+        for error_type in ["generic_error", "build_error", "an_unknown_type"] {
+            assert_eq!(
+                attention_for(error_type),
+                ApplyEndAttention::BuildFailed,
+                "{error_type} must not be hidden or downgraded"
+            );
+        }
         assert_eq!(
             apply_end_attention(&serde_json::json!({ "ok": false })),
             ApplyEndAttention::BuildFailed
         );
+    }
+
+    #[test]
+    fn apply_end_attention_matches_the_payloads_rebuild_actually_emits() {
+        let log_path = std::path::Path::new("/tmp/nixmac-apply.log");
+        let etc_clobber = etc_clobber_error_payload(
+            crate::shared_types::EtcClobberCheckResult {
+                ok: false,
+                checked: 1,
+                conflicts: Vec::new(),
+                warnings: Vec::new(),
+            },
+            log_path,
+        );
+        let app_management_preflight = app_management_error_payload(
+            crate::shared_types::AppManagementCheckResult {
+                ok: false,
+                checked: 1,
+                targets: Vec::new(),
+                failures: Vec::new(),
+            },
+            log_path,
+        );
+        let app_management_activation = handle_activation_error(
+            &failed_activation("", "Permission denied when trying to update apps"),
+            log_path,
+        );
+        let authorization_denied =
+            handle_activation_error(&failed_activation("", "authorization failed"), log_path);
+        let user_cancelled =
+            handle_activation_error(&failed_activation("", "User canceled. (-128)"), log_path);
+        let generic = handle_activation_error(&failed_activation("", "boom"), log_path);
+
+        for (payload, expected) in [
+            (&etc_clobber, ApplyEndAttention::BuildBlocked),
+            (&app_management_preflight, ApplyEndAttention::BuildBlocked),
+            (&app_management_activation, ApplyEndAttention::BuildBlocked),
+            (&authorization_denied, ApplyEndAttention::BuildBlocked),
+            (&user_cancelled, ApplyEndAttention::Silent),
+            (&generic, ApplyEndAttention::BuildFailed),
+        ] {
+            assert_eq!(apply_end_attention(payload), expected, "{payload}");
+        }
     }
 }
