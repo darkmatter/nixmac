@@ -8,6 +8,26 @@ pub const EVOLUTION_CANCELLED_MSG: &str = "Evolution cancelled by user";
 
 /// Global flag to signal evolution cancellation.
 static EVOLVE_CANCELLED: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
+static ACTIVE_EVOLUTIONS: std::sync::atomic::AtomicUsize = std::sync::atomic::AtomicUsize::new(0);
+
+pub struct ActiveEvolutionGuard;
+
+impl ActiveEvolutionGuard {
+    pub fn begin() -> Self {
+        ACTIVE_EVOLUTIONS.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
+        Self
+    }
+}
+
+impl Drop for ActiveEvolutionGuard {
+    fn drop(&mut self) {
+        ACTIVE_EVOLUTIONS.fetch_sub(1, std::sync::atomic::Ordering::SeqCst);
+    }
+}
+
+pub fn is_evolve_active() -> bool {
+    ACTIVE_EVOLUTIONS.load(std::sync::atomic::Ordering::SeqCst) > 0
+}
 
 /// Check if evolution has been cancelled.
 pub fn is_evolve_cancelled() -> bool {

@@ -21,6 +21,7 @@ mod history;
 mod homebrew;
 mod launchd;
 mod lsp;
+mod main_window;
 mod models;
 mod nix;
 mod onboarding;
@@ -56,6 +57,7 @@ pub fn build_router() -> Router<OrpcCtx> {
         .nest("summarizedChanges", summarized_changes::routes())
         .nest("history", history::routes())
         .nest("git", git::routes())
+        .nest("mainWindow", main_window::routes())
         .nest("previewIndicator", preview_indicator::routes())
         .nest("homebrew", homebrew::routes())
         .nest("launchd", launchd::routes())

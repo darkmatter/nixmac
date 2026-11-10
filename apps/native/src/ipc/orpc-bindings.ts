@@ -243,6 +243,8 @@ codex: boolean;
  */
 opencode: boolean }
 
+export type CloseRequestInput = { token: number }
+
 /**
  * Result of a successful `git_commit` command. State mirrors (git, evolve,
  * change map) flow through the `*_changed` events.
@@ -2155,6 +2157,12 @@ export type Procedures = {
     send: Client<Record<never, never>, SendInput, void, Error>
     start: Client<Record<never, never>, void, void, Error>
     stop: Client<Record<never, never>, void, void, Error>
+  }
+  mainWindow: {
+    acknowledgeClose: Client<Record<never, never>, CloseRequestInput, boolean, Error>
+    dismissClose: Client<Record<never, never>, CloseRequestInput, boolean, Error>
+    dismissPopover: Client<Record<never, never>, void, boolean, Error>
+    isPopover: Client<Record<never, never>, void, boolean, Error>
   }
   models: {
     clearCached: Client<Record<never, never>, ProviderInput, OkResult, Error>

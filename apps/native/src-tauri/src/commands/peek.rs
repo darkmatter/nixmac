@@ -1,5 +1,5 @@
 use super::helpers::capture_err;
-use crate::{peek, shared_types};
+use crate::{main_window, peek, shared_types};
 use tauri::AppHandle;
 
 pub async fn show_preview_indicator(app: AppHandle) -> Result<shared_types::OkResult, String> {
@@ -32,7 +32,12 @@ pub async fn fetch_preview_indicator_state() -> Result<shared_types::PreviewIndi
 /// Shows and focuses the main window (used by preview indicator).
 #[tauri::command]
 pub async fn show_main_window(app: AppHandle) -> Result<shared_types::OkResult, String> {
-    peek::show_main_window(&app).map_err(|e| capture_err("show_main_window", e))?;
+    let mode = main_window::active(&app);
+    if mode.is_popover() {
+        main_window::show(&app, mode).map_err(|e| capture_err("show_main_window", e))?;
+    } else {
+        peek::show_main_window(&app).map_err(|e| capture_err("show_main_window", e))?;
+    }
     Ok(shared_types::OkResult::yes())
 }
 

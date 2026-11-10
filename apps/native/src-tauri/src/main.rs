@@ -10,6 +10,7 @@
 // Keep top-level declarations scoped to first-level domain modules. Leaf modules
 // are declared by their parent `mod.rs` files so rust-analyzer resolves them via Cargo.
 mod ai;
+mod attention;
 mod bootstrap;
 // Consumed by `build.rs` via include!; declared here so its resolution table
 // stays under `cargo test`.
@@ -28,6 +29,7 @@ mod feedback;
 mod git;
 mod history;
 mod http_client;
+mod main_window;
 mod managed_edits;
 mod observable;
 mod orpc;
@@ -63,7 +65,7 @@ use std::time::Duration;
 use tauri::{
     Emitter, Manager, RunEvent, WebviewUrl, WebviewWindow, WebviewWindowBuilder, WindowEvent,
     menu::{Menu, MenuItem, PredefinedMenuItem},
-    tray::TrayIconBuilder,
+    tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent},
     webview::PageLoadEvent,
 };
 use tracing_subscriber::{EnvFilter, fmt, layer::SubscriberExt, util::SubscriberInitExt};
@@ -500,6 +502,20 @@ fn run_cli_mode(context: tauri::Context<tauri::Wry>) -> i32 {
     }
 }
 
+const POPOVER_MAIN_WINDOW_STATE_LABEL: &str = "popover-main";
+
+fn window_state_label(label: &str, popover_mode: bool) -> &str {
+    if label == "main" && popover_mode {
+        POPOVER_MAIN_WINDOW_STATE_LABEL
+    } else {
+        label
+    }
+}
+
+fn should_track_window_state(label: &str) -> bool {
+    label != POPOVER_MAIN_WINDOW_STATE_LABEL
+}
+
 fn run_gui_mode(
     context: tauri::Context<tauri::Wry>,
     log_guard: std::sync::Arc<
@@ -513,6 +529,9 @@ fn run_gui_mode(
 
     let mut builder = tauri::Builder::default().plugin(tauri_plugin_http::init());
     let orpc_router = orpc::build_router();
+    let popover_window_state = Arc::new(AtomicBool::new(false));
+    let popover_window_state_for_label = Arc::clone(&popover_window_state);
+    let popover_window_state_for_setup = Arc::clone(&popover_window_state);
 
     // The updater will misbehave in dev mode (always says an update is available, fails signature
     // checks, tries to downgrade your app, etc.), so we only include it in release builds.
@@ -542,11 +561,28 @@ fn run_gui_mode(
         .plugin(tauri_plugin_keyring::init())
         .plugin(tauri_plugin_positioner::init())
         .plugin(tauri_plugin_process::init())
-        .plugin(tauri_plugin_single_instance::init(|_, _, _| {}))
+        .plugin(tauri_plugin_single_instance::init(|app, _, _| {
+            let mode = main_window::active(app);
+            if mode.is_popover()
+                && let Err(error) = main_window::show(app, mode)
+            {
+                log::warn!("Failed to show main window from second app open: {}", error);
+            }
+        }))
         .plugin(tauri_plugin_websocket::init())
         .plugin(
             tauri_plugin_window_state::Builder::new()
                 .with_state_flags(tauri_plugin_window_state::StateFlags::POSITION)
+                // The plugin still walks its preloaded cache on Exit after a
+                // window is filtered. Remap popover `main` first so that pass
+                // cannot overwrite the saved control-window position.
+                .map_label(move |label| {
+                    window_state_label(
+                        label,
+                        popover_window_state_for_label.load(Ordering::SeqCst),
+                    )
+                })
+                .with_filter(should_track_window_state)
                 .build(),
         )
         .plugin(tauri_plugin_sql::Builder::new().build())
@@ -695,6 +731,15 @@ fn run_gui_mode(
             panic_handler::setup_panic_hook(handle.clone());
 
             register_managed_state(handle)?;
+            let main_window_mode = main_window::read_at_launch(handle);
+            popover_window_state_for_setup.store(main_window_mode.is_popover(), Ordering::SeqCst);
+            app.manage(main_window_mode);
+            log::info!("Main window mode at launch: {:?}", main_window_mode);
+            if let Err(error) = attention::install(handle) {
+                // Attention is additive UX. A notification-center integration
+                // failure must not prevent the user from opening nixmac.
+                log::warn!("Could not install menu-bar attention notifications: {error}");
+            }
 
             // Initialize SQLite database before any consumer that reads the
             // managed DbPool from app state.
@@ -758,56 +803,113 @@ fn run_gui_mode(
             app.manage(telemetry::init::init_telemetry(send_diagnostics));
 
             // Build the system tray menu
-            let open_i = MenuItem::with_id(app, "open", "Open nixmac", true, None::<&str>)?;
-            let sep1 = PredefinedMenuItem::separator(app)?;
             let feedback_i =
                 MenuItem::with_id(app, "send_feedback", "Send Feedback...", true, None::<&str>)?;
             let settings_i = MenuItem::with_id(app, "settings", "Settings...", true, None::<&str>)?;
             let sep2 = PredefinedMenuItem::separator(app)?;
             let quit_i = MenuItem::with_id(app, "quit", "Quit nixmac", true, None::<&str>)?;
 
-            let menu = Menu::with_items(
-                app,
-                &[&open_i, &sep1, &feedback_i, &settings_i, &sep2, &quit_i],
-            )?;
+            let menu = if main_window_mode.is_popover() {
+                Menu::with_items(app, &[&feedback_i, &settings_i, &sep2, &quit_i])?
+            } else {
+                let open_i = MenuItem::with_id(app, "open", "Open nixmac", true, None::<&str>)?;
+                let sep1 = PredefinedMenuItem::separator(app)?;
+                Menu::with_items(
+                    app,
+                    &[&open_i, &sep1, &feedback_i, &settings_i, &sep2, &quit_i],
+                )?
+            };
 
             // Clone a handle to the guard for use in menu callbacks (so we can flush on quit)
             let log_guard_for_menu = log_guard.clone();
+            let mode_for_tray = main_window_mode;
+            let mode_for_menu = main_window_mode;
+            let tray_click_state = Arc::new(Mutex::new(main_window::TrayClickState::default()));
+            let tray_click_state_for_tray = Arc::clone(&tray_click_state);
 
-            let _tray = TrayIconBuilder::new()
+            let _tray = TrayIconBuilder::with_id(main_window::MAIN_TRAY_ID)
                 .icon(tray_icon::load()?)
                 .icon_as_template(true)
                 .menu(&menu)
-                .show_menu_on_left_click(true)
-                .on_tray_icon_event(|tray_handle, event| {
+                .show_menu_on_left_click(!main_window_mode.is_popover())
+                .on_tray_icon_event(move |tray_handle, event| {
                     tauri_plugin_positioner::on_tray_event(tray_handle.app_handle(), &event);
+                    if !mode_for_tray.is_popover() {
+                        return;
+                    }
+                    let input = match event {
+                        TrayIconEvent::Click {
+                            button: MouseButton::Left,
+                            button_state: MouseButtonState::Down,
+                            ..
+                        } => {
+                            let (is_visible, is_minimized) = tray_handle
+                                .app_handle()
+                                .get_webview_window("main")
+                                .map(|window| {
+                                    (
+                                        window.is_visible().unwrap_or(false),
+                                        window.is_minimized().unwrap_or(true),
+                                    )
+                                })
+                                .unwrap_or((false, false));
+                            main_window::TrayClickInput::Down {
+                                is_visible,
+                                is_minimized,
+                            }
+                        }
+                        TrayIconEvent::Click {
+                            button: MouseButton::Left,
+                            button_state: MouseButtonState::Up,
+                            ..
+                        } => main_window::TrayClickInput::Up,
+                        _ => return,
+                    };
+                    let decision = {
+                        let mut state = tray_click_state_for_tray
+                            .lock()
+                            .unwrap_or_else(|poisoned| poisoned.into_inner());
+                        let decision = main_window::decide_tray_click(
+                            mode_for_tray,
+                            *state,
+                            input,
+                        );
+                        *state = decision.state;
+                        decision
+                    };
+                    log::debug!("Menu-bar popover tray transition: {:?}", decision);
+                    let result = match decision.action {
+                        main_window::TrayClickAction::None => return,
+                        main_window::TrayClickAction::Show => {
+                            main_window::show(tray_handle.app_handle(), mode_for_tray)
+                        }
+                        main_window::TrayClickAction::Dismiss => {
+                            main_window::dismiss(tray_handle.app_handle(), mode_for_tray).map(|_| ())
+                        }
+                    };
+                    if let Err(error) = result {
+                        log::warn!("Failed to toggle menu-bar popover: {}", error);
+                    }
                 })
-                // All window calls below are fire-and-forget: tray menu callbacks run
-                // asynchronously and the window may be hidden or in a transitional state.
-                // show/set_focus/emit only fail when the window is destroyed, which is
-                // acceptable — the app is still running, just with no visible window.
+                // Menu callbacks can race app shutdown, so their window actions are best-effort.
                 .on_menu_event(move |app, event| match event.id().as_ref() {
                     "open" => {
-                        if let Some(window) = app.get_webview_window("main") {
-                            let _ = window.show();
-                            let _ = window.set_focus();
-                        }
+                        let _ = main_window::show(app, mode_for_menu);
                     }
                     "send_feedback" => {
+                        let _ = main_window::show(app, mode_for_menu);
                         if let Some(window) = app.get_webview_window("main") {
-                            let _ = window.show();
-                            let _ = window.set_focus();
                             let _ = window.emit("tray:open-feedback", ());
                         }
                     }
                     "settings" => {
+                        let _ = main_window::show(app, mode_for_menu);
                         if let Some(window) = app.get_webview_window("main") {
-                            let _ = window.show();
-                            let _ = window.set_focus();
                             let _ = window.emit("tray:open-settings", ());
                         }
                     }
                     "quit" => {
+                        attention::shutdown();
                         // Explicitly drop the WorkerGuard (flush logs) before exiting.
                         if let Some(_g) = log_guard_for_menu.lock().unwrap().take() {
                             // `_g` dropped here
@@ -820,11 +922,23 @@ fn run_gui_mode(
 
             // Create the main window
             let initial_width = 800.0;
-            let initial_height = 800.0;
+            let initial_height = if main_window_mode.is_popover() {
+                600.0
+            } else {
+                800.0
+            };
             let min_width = 800.0;
-            let max_width = 2400.0;
+            let max_width = if main_window_mode.is_popover() {
+                800.0
+            } else {
+                2400.0
+            };
             let min_height = 600.0;
-            let max_height = 1800.0;
+            let max_height = if main_window_mode.is_popover() {
+                600.0
+            } else {
+                1800.0
+            };
             let e2e_opaque_window = e2e_opaque_window_enabled();
             let e2e_solid_capture = e2e_solid_capture_enabled();
             let e2e_css_capture = e2e_solid_capture || e2e_opaque_window;
@@ -840,7 +954,10 @@ fn run_gui_mode(
             }
             let main_webview_loaded = Arc::new(AtomicBool::new(false));
             let main_webview_loaded_for_page_load = Arc::clone(&main_webview_loaded);
+            let initial_popover_shown = Arc::new(AtomicBool::new(false));
+            let initial_popover_shown_for_page_load = Arc::clone(&initial_popover_shown);
             let e2e_page_load_boot_probe = e2e_webview_watchdog;
+            let mode_for_page_load = main_window_mode;
 
             let mut main_window_builder =
                 WebviewWindowBuilder::new(app, "main", WebviewUrl::App("index.html".into()))
@@ -848,14 +965,14 @@ fn run_gui_mode(
                     .inner_size(initial_width, initial_height)
                     .min_inner_size(min_width, min_height)
                     .max_inner_size(max_width, max_height)
-                    .resizable(true)
+                    .resizable(!main_window_mode.is_popover())
                     .maximizable(false)
                     .minimizable(true)
                     .closable(true)
                     .decorations(true)
                     .transparent(!e2e_opaque_window)
                     .theme(Some(tauri::Theme::Dark))
-                    .visible(true)
+                    .visible(!main_window_mode.is_popover())
                     .background_color(tauri::utils::config::Color(0, 0, 0, 235))
                     .always_on_top(false)
                     .visible_on_all_workspaces(true)
@@ -867,6 +984,15 @@ fn run_gui_mode(
                         );
                         if payload.event() == PageLoadEvent::Finished {
                             main_webview_loaded_for_page_load.store(true, Ordering::SeqCst);
+                            if mode_for_page_load.is_popover()
+                                && !initial_popover_shown_for_page_load
+                                    .swap(true, Ordering::SeqCst)
+                            {
+                                main_window::show_initial_when_ready(
+                                    window.app_handle(),
+                                    mode_for_page_load,
+                                );
+                            }
                             if e2e_page_load_boot_probe {
                                 e2e_schedule_webview_boot_probe(
                                     window.clone(),
@@ -911,6 +1037,10 @@ fn run_gui_mode(
                 msg
             })?;
             log::debug!("Main nixmac window created");
+
+            if let Err(error) = main_window::install_macos_event_handlers(handle) {
+                log::warn!("Could not install menu-bar popover event handlers: {}", error);
+            }
 
             // Frosted-glass window background via native AppKit vibrancy
             // (NSVisualEffectView). The main webview is transparent and the CSS
@@ -1029,14 +1159,17 @@ use window_vibrancy::{apply_vibrancy, NSVisualEffectMaterial, NSVisualEffectStat
             let _ = main_window;
 
             // Create the preview indicator window (persistent banner for uncommitted changes)
-            if let Err(e) = peek::create_preview_indicator_window(handle) {
+            if main_window_mode.shows_detached_indicators()
+                && let Err(e) = peek::create_preview_indicator_window(handle)
+            {
                 log::error!("[peek] ❌ Failed to create preview indicator window: {}", e);
             }
 
             // Experimental: create the spinning-mascot indicator window when the
             // flag is enabled at launch. Gated here so users who never enable it
             // pay no startup cost; enabling the flag applies on the next launch.
-            if crate::state::ui_prefs::experimental_spinning_mascot(handle)
+            if main_window_mode.shows_detached_indicators()
+                && crate::state::ui_prefs::experimental_spinning_mascot(handle)
                 && let Err(e) = peek::create_evolve_mascot_window(handle) {
                     log::error!("[peek] failed to create evolve mascot window: {}", e);
                 }
@@ -1052,6 +1185,10 @@ use window_vibrancy::{apply_vibrancy, NSVisualEffectMaterial, NSVisualEffectStat
         .build(context)
         .expect("error while building tauri application")
         .run(|app_handle, event| {
+            if matches!(event, RunEvent::Exit) {
+                attention::shutdown();
+            }
+
             // Handle window close events - hide window but keep app running
             if let RunEvent::WindowEvent {
                 label,
@@ -1061,10 +1198,13 @@ use window_vibrancy::{apply_vibrancy, NSVisualEffectMaterial, NSVisualEffectStat
                 && label == "main" {
                     // Prevent the window from being destroyed
                     api.prevent_close();
-                    if let Some(window) = app_handle.get_webview_window("main") {
-                        // fire-and-forget: hide() can fail if window is already hidden.
+                    let mode = main_window::active(app_handle);
+                    if mode.is_popover() {
+                        if let Err(error) = main_window::request_close(app_handle) {
+                            log::warn!("Failed to hand popover close request to the WebView: {}", error);
+                        }
+                    } else if let Some(window) = app_handle.get_webview_window("main") {
                         let _ = window.hide();
-                        // Update peek state
                         peek::unlock_and_hide();
                     }
                 }
@@ -1072,12 +1212,10 @@ use window_vibrancy::{apply_vibrancy, NSVisualEffectMaterial, NSVisualEffectStat
             #[cfg(target_os = "macos")]
             {
                 // Click Nixmac icon to show
-                if let RunEvent::Reopen { .. } = &event
-                    && let Some(window) = app_handle.get_webview_window("main") {
-                        // fire-and-forget: show/set_focus fail only on destroyed window.
-                        let _ = window.show();
-                        let _ = window.set_focus();
-                    }
+                if let RunEvent::Reopen { .. } = &event {
+                    // fire-and-forget: show/focus only fail on a destroyed window.
+                    let _ = main_window::show(app_handle, main_window::active(app_handle));
+                }
             }
         });
 }
@@ -1088,6 +1226,21 @@ mod managed_state_tests {
     use crate::observable::Observable;
     use crate::shared_types::GlobalPreferences;
     use tauri::Manager;
+
+    #[test]
+    fn popover_position_does_not_replace_the_saved_control_position() {
+        assert_eq!(window_state_label("main", false), "main");
+        assert_eq!(
+            window_state_label("main", true),
+            POPOVER_MAIN_WINDOW_STATE_LABEL
+        );
+        assert!(!should_track_window_state(window_state_label("main", true)));
+        assert!(should_track_window_state(window_state_label("main", false)));
+        assert!(should_track_window_state(window_state_label(
+            "preview-indicator",
+            true
+        )));
+    }
 
     /// Regression for the PR #411 CLI breakage: `run_cli_mode` calls
     /// `Builder::build()` but never starts the event loop, and Tauri only runs

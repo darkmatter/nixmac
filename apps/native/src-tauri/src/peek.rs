@@ -245,19 +245,7 @@ pub fn show_main_window<R: Runtime>(app: &AppHandle<R>) -> Result<(), String> {
     peek_log!("📍 Showing main window");
     window.show().map_err(|e| e.to_string())?;
     window.set_focus().map_err(|e| e.to_string())?;
-
-    MAIN_WINDOW_OPEN.store(true, Ordering::SeqCst);
-
-    // Hide the icon
-    hide_icon(app)?;
-
-    // Note: Preview indicator stays visible when there are changes,
-    // even when main window is open
-
-    // Emit state change
-    let _ = window.emit("peek:state", PeekState::Expanded);
-
-    Ok(())
+    record_main_window_shown(app)
 }
 
 /// Hides the main window
@@ -265,13 +253,31 @@ pub fn hide_main_window<R: Runtime>(app: &AppHandle<R>) -> Result<(), String> {
     if let Some(window) = app.get_webview_window("main") {
         window.hide().map_err(|e| e.to_string())?;
         peek_log!("🙈 Hiding main window");
-        MAIN_WINDOW_OPEN.store(false, Ordering::SeqCst);
-        let _ = window.emit("peek:state", PeekState::Hidden);
+        record_main_window_hidden(app)?;
+    }
+    Ok(())
+}
 
-        // Show preview indicator if there are uncommitted changes
-        if HAS_UNCOMMITTED_CHANGES.load(Ordering::SeqCst) {
-            show_preview_indicator(app)?;
-        }
+/// Keeps the shared peek state in sync after any main-window show path.
+pub(crate) fn record_main_window_shown<R: Runtime>(app: &AppHandle<R>) -> Result<(), String> {
+    MAIN_WINDOW_OPEN.store(true, Ordering::SeqCst);
+    let hide_icon_result = hide_icon(app);
+    if let Some(window) = app.get_webview_window("main") {
+        let _ = window.emit("peek:state", PeekState::Expanded);
+    }
+    hide_icon_result
+}
+
+/// Keeps the shared peek state and preview indicator in sync after any hide path.
+pub(crate) fn record_main_window_hidden<R: Runtime>(app: &AppHandle<R>) -> Result<(), String> {
+    MAIN_WINDOW_OPEN.store(false, Ordering::SeqCst);
+    if let Some(window) = app.get_webview_window("main") {
+        let _ = window.emit("peek:state", PeekState::Hidden);
+    }
+    if crate::main_window::active(app).shows_detached_indicators()
+        && HAS_UNCOMMITTED_CHANGES.load(Ordering::SeqCst)
+    {
+        show_preview_indicator(app)?;
     }
     Ok(())
 }
@@ -568,7 +574,9 @@ pub fn create_preview_indicator_window<R: Runtime>(app: &AppHandle<R>) -> Result
 
 /// Shows the preview indicator window
 pub fn show_preview_indicator<R: Runtime>(app: &AppHandle<R>) -> Result<(), String> {
-    if !get_preview_indicator_state().visible {
+    if !crate::main_window::active(app).shows_detached_indicators()
+        || !get_preview_indicator_state().visible
+    {
         // The transparent webview would block the underlying application even
         // though React renders no indicator. Keep it hidden in that case.
         return hide_preview_indicator(app);
@@ -646,7 +654,9 @@ pub fn update_preview_indicator<R: Runtime>(
 
         // Show preview indicator whenever there are visible changes,
         // regardless of whether main window is open
-        if state.visible {
+        if !crate::main_window::active(app).shows_detached_indicators() {
+            hide_preview_indicator(app)?;
+        } else if state.visible {
             show_preview_indicator(app)?;
         } else {
             hide_preview_indicator(app)?;

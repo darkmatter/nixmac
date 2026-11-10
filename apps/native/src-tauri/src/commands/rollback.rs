@@ -9,16 +9,31 @@ pub async fn run_rollback_erase(app: AppHandle) -> Result<shared_types::Rollback
 }
 
 pub async fn run_build_check(app: AppHandle) -> Result<shared_types::BuildCheckResult, String> {
-    let config_dir =
-        store::ensure_config_dir_exists(&app).map_err(|e| capture_err("darwin_build_check", e))?;
+    crate::attention::begin_build_check(&app);
+    let config_dir = store::ensure_config_dir_exists(&app).map_err(|error| {
+        crate::attention::build_check_failed(&app);
+        capture_err("darwin_build_check", error)
+    })?;
     let host_attr = store::get_host_attr(&app)
-        .map_err(|e| capture_err("darwin_build_check", e))?
-        .ok_or_else(|| "No host configured — cannot run build check".to_string())?;
+        .map_err(|error| {
+            crate::attention::build_check_failed(&app);
+            capture_err("darwin_build_check", error)
+        })?
+        .ok_or_else(|| {
+            crate::attention::build_check_failed(&app);
+            "No host configured — cannot run build check".to_string()
+        })?;
 
     let (passed, stdout, stderr) = rebuild::dry_run_build_check(&config_dir, &host_attr, false)
-        .map_err(|e| capture_err("darwin_build_check", e))?;
+        .map_err(|error| {
+            crate::attention::build_check_failed(&app);
+            capture_err("darwin_build_check", error)
+        })?;
 
     let output = if stderr.is_empty() { stdout } else { stderr };
+    if !passed {
+        crate::attention::build_check_failed(&app);
+    }
     Ok(shared_types::BuildCheckResult { passed, output })
 }
 

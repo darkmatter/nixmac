@@ -183,4 +183,29 @@ describe("useApply", () => {
     );
     resolveCommitMessage?.();
   });
+
+  it("lets the rebuild coordinator surface apply finalization failures", async () => {
+    mocks.finalizeApply.mockRejectedValue(new Error("finalization failed"));
+    const { result } = renderHook(() => useApply());
+
+    await act(async () => {
+      await result.current.handleApply();
+    });
+
+    const options = mocks.triggerRebuild.mock.calls[0]?.[0] as {
+      onSuccess?: () => Promise<void>;
+    };
+    await expect(options.onSuccess?.()).rejects.toThrow("finalization failed");
+  });
+
+  it("shows manual-build finalization failures in the visible UI", async () => {
+    mocks.finalizeApply.mockRejectedValue(new Error("manual finalization failed"));
+    const { result } = renderHook(() => useApply());
+
+    await act(async () => {
+      await result.current.handleManualBuildConfirm();
+    });
+
+    expect(useUiState.getState().error).toBe("manual finalization failed");
+  });
 });

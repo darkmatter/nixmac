@@ -181,8 +181,27 @@ objc2-foundation = { version = "0.3.2", default-features = false, features = [
   "std",
   "NSDictionary",
   "NSError",
+  "NSGeometry",
+  "NSNotification",
+  "NSObject",
+  "NSOperation",
   "NSString",
   "NSThread",
+  "NSUserNotification",
+  "block2",
+] }
+objc2-app-kit = { version = "0.3", default-features = false, features = [
+  "std",
+  "NSApplication",
+  "NSButton",
+  "NSControl",
+  "NSEvent",
+  "NSResponder",
+  "NSScreen",
+  "NSStatusBarButton",
+  "NSView",
+  "NSWindow",
+  "block2",
 ] }
 block2 = "0.6"
 dispatch2 = "0.3"

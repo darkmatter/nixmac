@@ -266,6 +266,7 @@ pub async fn backup_evolve_and_record_changeset(
                 evolution.summary.clone(),
             ),
         );
+        crate::attention::evolution_completed(app, &telemetry.state, true);
         return Ok(EvolutionResult {
             change_map: SemanticChangeMap::default(),
             git_status: initial_status,
@@ -332,6 +333,7 @@ pub async fn backup_evolve_and_record_changeset(
             None,
         ),
     );
+    crate::attention::evolution_completed(app, &telemetry.state, false);
 
     Ok(EvolutionResult {
         change_map,
