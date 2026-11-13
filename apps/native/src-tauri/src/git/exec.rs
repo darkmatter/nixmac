@@ -16,6 +16,9 @@ use std::path::{Component, Path, PathBuf};
 /// Only the two directories are canonicalized: `path` itself may name a
 /// deleted or not-yet-created file. The remaining components are normalized
 /// lexically so `..` can move within the repository but never escape it.
+/// The result must name something below the work tree root, must not touch
+/// git metadata, and must not reach outside the work tree through a symlinked
+/// directory.
 ///
 /// This is important because we don't want to assume the config_dir is at the repository root
 /// in nixmac, and git2 requires repository-relative paths.
@@ -56,7 +59,54 @@ fn repo_relative_path(repo: &git2::Repository, dir: &str, path: &str) -> Result<
         }
     }
 
+    anyhow::ensure!(
+        !normalized.as_os_str().is_empty(),
+        "path `{}` does not name a file in repository `{}`",
+        joined.display(),
+        workdir.display()
+    );
+    // Git metadata is never a working-tree file. macOS volumes are
+    // case-insensitive by default, so `.GIT/HEAD` names the same file.
+    anyhow::ensure!(
+        !normalized
+            .components()
+            .any(|component| component.as_os_str().eq_ignore_ascii_case(".git")),
+        "refusing to touch git metadata at `{}`",
+        joined.display()
+    );
+    ensure_parent_inside_workdir(&workdir, &normalized)?;
+
     Ok(normalized)
+}
+
+/// Lexical normalization cannot see symlinks: with `linked` a symlink to a
+/// directory outside the repository, `linked/victim.txt` passes every check in
+/// [`repo_relative_path`] yet reads, writes or deletes outside the work tree.
+/// Resolve the deepest existing ancestor of the target and require it to stay
+/// inside `workdir` (which must already be canonical).
+///
+/// The final component is deliberately left unresolved: a tracked symlink such
+/// as `result -> /nix/store/...` is a valid target in its own right, and these
+/// operations act on the link rather than on what it points to.
+fn ensure_parent_inside_workdir(workdir: &Path, relative: &Path) -> Result<()> {
+    let target = workdir.join(relative);
+    let mut ancestor = target.clone();
+    while ancestor.pop() {
+        if std::fs::symlink_metadata(&ancestor).is_err() {
+            continue;
+        }
+        let resolved = ancestor
+            .canonicalize()
+            .with_context(|| format!("resolve `{}`", ancestor.display()))?;
+        anyhow::ensure!(
+            resolved.starts_with(workdir),
+            "path `{}` resolves outside repository `{}`",
+            target.display(),
+            workdir.display()
+        );
+        return Ok(());
+    }
+    Ok(())
 }
 
 /// Helper to determine the Git index mode for an intent-to-add entry based on filesystem metadata.
@@ -603,7 +653,13 @@ pub fn restore_file(dir: &str, path: &str) -> Result<()> {
             .revparse_single("HEAD")
             .context("git2 resolve HEAD for restore_file")?;
         let mut checkout = git2::build::CheckoutBuilder::new();
-        checkout.force().update_index(true).path(&rel);
+        // Match `rel` literally: as a pathspec, a tracked file named `*.nix`
+        // would also restore every other `.nix` file.
+        checkout
+            .force()
+            .update_index(true)
+            .disable_pathspec_match(true)
+            .path(&rel);
         repo.checkout_tree(&head_obj, Some(&mut checkout))
             .with_context(|| format!("git2 restore `{path}` from HEAD"))?;
     } else {
@@ -1333,6 +1389,146 @@ mod tests {
         assert!(restore_file(&repo_dir_str, "../outside.nix").is_err());
         assert_eq!(fs::read_to_string(outside).unwrap(), "keep me\n");
         assert!(commit_file(&repo_dir_str, "../outside.nix", "outside").is_err());
+    }
+
+    #[test]
+    fn test_repo_relative_path_rejects_git_metadata_and_the_root() {
+        let temp_dir = TempDir::new().unwrap();
+        let repo_dir = temp_dir.path().join("repo");
+        let repo_dir_str = repo_dir.to_string_lossy().to_string();
+        init_repo(&repo_dir_str).unwrap();
+        fs::create_dir_all(repo_dir.join("sub")).unwrap();
+        let repo = git2::Repository::open(&repo_dir).unwrap();
+
+        for path in [
+            ".git",
+            ".git/HEAD",
+            ".GIT/HEAD",
+            "sub/.git/config",
+            "sub/../.git/config",
+            "",
+            ".",
+        ] {
+            assert!(
+                repo_relative_path(&repo, &repo_dir_str, path).is_err(),
+                "`{path}` should be rejected"
+            );
+        }
+        for path in [
+            ".gitignore",
+            ".github/workflows/ci.yml",
+            "sub/.gitmodules",
+            ".git/../flake.nix",
+        ] {
+            assert!(
+                repo_relative_path(&repo, &repo_dir_str, path).is_ok(),
+                "`{path}` should be accepted"
+            );
+        }
+    }
+
+    #[test]
+    fn test_restore_file_refuses_git_metadata() {
+        let temp_dir = TempDir::new().unwrap();
+        let repo_dir = temp_dir.path().join("repo");
+        let repo_dir_str = repo_dir.to_string_lossy().to_string();
+        init_repo(&repo_dir_str).unwrap();
+        fs::write(repo_dir.join("flake.nix"), "{ }\n").unwrap();
+        let head = commit_all(&repo_dir_str, "initial").unwrap();
+
+        assert!(restore_file(&repo_dir_str, ".git/HEAD").is_err());
+        assert!(restore_file(&repo_dir_str, ".GIT/HEAD").is_err());
+
+        assert!(repo_dir.join(".git/HEAD").exists());
+        assert_eq!(
+            run_git_ok(&repo_dir, &["rev-parse", "HEAD"]).trim(),
+            head.hash
+        );
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn test_single_file_operations_reject_symlinked_directory_escape() {
+        let temp_dir = TempDir::new().unwrap();
+        let repo_dir = temp_dir.path().join("repo");
+        let repo_dir_str = repo_dir.to_string_lossy().to_string();
+        init_repo(&repo_dir_str).unwrap();
+        fs::write(repo_dir.join("flake.nix"), "{ }\n").unwrap();
+        let head = commit_all(&repo_dir_str, "initial").unwrap();
+
+        let outside_dir = temp_dir.path().join("outside");
+        let victim = outside_dir.join("victim.txt");
+        fs::create_dir_all(&outside_dir).unwrap();
+        fs::write(&victim, "outside\n").unwrap();
+        std::os::unix::fs::symlink(&outside_dir, repo_dir.join("linked-out")).unwrap();
+
+        assert!(restore_file(&repo_dir_str, "linked-out/victim.txt").is_err());
+        assert!(
+            restore_hunk(
+                &repo_dir_str,
+                "linked-out/victim.txt",
+                "@@ -1,1 +1,1 @@\n-outside\n+changed"
+            )
+            .is_err()
+        );
+        assert!(commit_file(&repo_dir_str, "linked-out/victim.txt", "escape").is_err());
+
+        assert_eq!(fs::read_to_string(&victim).unwrap(), "outside\n");
+        assert_eq!(
+            run_git_ok(&repo_dir, &["rev-parse", "HEAD"]).trim(),
+            head.hash
+        );
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn test_restore_file_removes_an_untracked_leaf_symlink_but_not_its_target() {
+        let temp_dir = TempDir::new().unwrap();
+        let repo_dir = temp_dir.path().join("repo");
+        let repo_dir_str = repo_dir.to_string_lossy().to_string();
+        init_repo(&repo_dir_str).unwrap();
+        fs::write(repo_dir.join("flake.nix"), "{ }\n").unwrap();
+        commit_all(&repo_dir_str, "initial").unwrap();
+
+        let store_path = temp_dir.path().join("store-output");
+        fs::create_dir_all(&store_path).unwrap();
+        fs::write(store_path.join("bin"), "built\n").unwrap();
+        std::os::unix::fs::symlink(&store_path, repo_dir.join("result")).unwrap();
+
+        restore_file(&repo_dir_str, "result").unwrap();
+
+        assert!(fs::symlink_metadata(repo_dir.join("result")).is_err());
+        assert_eq!(
+            fs::read_to_string(store_path.join("bin")).unwrap(),
+            "built\n"
+        );
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn test_restore_file_matches_glob_characters_literally() {
+        let temp_dir = TempDir::new().unwrap();
+        let repo_dir = temp_dir.path().join("repo");
+        let repo_dir_str = repo_dir.to_string_lossy().to_string();
+        init_repo(&repo_dir_str).unwrap();
+        fs::write(repo_dir.join("a.nix"), "a\n").unwrap();
+        fs::write(repo_dir.join("*.nix"), "star\n").unwrap();
+        commit_all(&repo_dir_str, "initial").unwrap();
+
+        fs::write(repo_dir.join("a.nix"), "a changed\n").unwrap();
+        fs::write(repo_dir.join("*.nix"), "star changed\n").unwrap();
+
+        restore_file(&repo_dir_str, "*.nix").unwrap();
+
+        assert_eq!(
+            fs::read_to_string(repo_dir.join("*.nix")).unwrap(),
+            "star\n"
+        );
+        assert_eq!(
+            fs::read_to_string(repo_dir.join("a.nix")).unwrap(),
+            "a changed\n",
+            "discarding `*.nix` must not discard other .nix files"
+        );
     }
 
     #[test]
