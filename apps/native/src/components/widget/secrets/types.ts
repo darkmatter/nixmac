@@ -10,7 +10,7 @@ export type SecretsTab = "vault" | "keys";
 export type SecretsView =
   | { kind: "browse" }
   | { kind: "add" }
-  | { kind: "detail"; secretId: string }
+  | { kind: "detail"; secretId: string; backend: SecretBackend }
   | { kind: "rotate" };
 
 export interface ApplyDiffLine {

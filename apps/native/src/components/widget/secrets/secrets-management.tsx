@@ -222,7 +222,9 @@ export function SecretsManagement({
     recipients: [...vault.recipients, ...extraRecipients],
   };
   const selectedSecret =
-    view.kind === "detail" ? vault.entries.find((s) => s.id === view.secretId) : undefined;
+    view.kind === "detail"
+      ? vault.entries.find((s) => s.id === view.secretId && s.backend === view.backend)
+      : undefined;
 
   return (
     <div className="relative flex h-full min-h-0 flex-col bg-background font-sans text-foreground">
@@ -256,7 +258,7 @@ export function SecretsManagement({
         {view.kind === "browse" && tab === "vault" && (
           <VaultView
             vault={effectiveVault}
-            onOpenSecret={(secretId) => setView({ kind: "detail", secretId })}
+            onOpenSecret={(secretId, backend) => setView({ kind: "detail", secretId, backend })}
             onCopy={copy}
           />
         )}

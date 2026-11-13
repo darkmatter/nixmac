@@ -67,7 +67,10 @@ export function SecretDetailView({
     setIsDecrypting(true);
     setRevealError(null);
     try {
-      const plaintext = await client.secrets.decryptSecret({ secretId: secret.id });
+      const plaintext = await client.secrets.decryptSecret({
+        secretId: secret.id,
+        backend: secret.backend,
+      });
       setDecryptedValue(plaintext);
       setIsRevealed(true);
     } catch (error) {
@@ -85,15 +88,21 @@ export function SecretDetailView({
         </span>
       </ViewHeader>
 
-      <div className="grid grid-cols-2 gap-2.5">
+      <div
+        className={
+          secret.backend === "sops" ? "grid grid-cols-2 gap-2.5" : "grid grid-cols-1 gap-2.5"
+        }
+      >
         <div className="rounded-[9px] border border-border px-3 py-2.5">
           <div className="text-[11px] text-muted-foreground">File</div>
           <code className="font-mono text-xs">{secret.file}</code>
         </div>
-        <div className="rounded-[9px] border border-border px-3 py-2.5">
-          <div className="text-[11px] text-muted-foreground">SOPS key</div>
-          <code className="font-mono text-xs">{secret.sopsKey ?? "—"}</code>
-        </div>
+        {secret.backend === "sops" ? (
+          <div className="rounded-[9px] border border-border px-3 py-2.5">
+            <div className="text-[11px] text-muted-foreground">SOPS key</div>
+            <code className="font-mono text-xs">{secret.sopsKey ?? "—"}</code>
+          </div>
+        ) : null}
       </div>
 
       <div className="rounded-[11px] border border-border bg-muted/20 px-4 py-3.5">
@@ -103,7 +112,8 @@ export function SecretDetailView({
             {capability === "unknown" ? (
               <div className="flex items-center gap-1.5 text-[11.5px] text-muted-foreground">
                 <CircleHelp className="size-3.5" aria-hidden="true" />
-                Capability is unknown; revealing will ask SOPS to try the identities available to
+                Capability is unknown; revealing will ask{" "}
+                {secret.backend === "sops" ? "SOPS" : "age"} to try the identities available to
                 this process.
               </div>
             ) : null}

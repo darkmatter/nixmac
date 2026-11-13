@@ -93,7 +93,8 @@ export const AddRecipient = meta.story({
  * vault contract.
  */
 export const SecretDetail = meta.story({
-  render: () => framed({ initialView: { kind: "detail", secretId: "github-token" } }),
+  render: () =>
+    framed({ initialView: { kind: "detail", secretId: "github-token", backend: "agenix" } }),
 });
 
 /**
@@ -101,7 +102,10 @@ export const SecretDetail = meta.story({
  * the UI explains that local identity availability is not fully knowable.
  */
 export const SecretDetailNoAccess = meta.story({
-  render: () => framed({ initialView: { kind: "detail", secretId: "cachix-signing-key" } }),
+  render: () =>
+    framed({
+      initialView: { kind: "detail", secretId: "cachix-signing-key", backend: "sops" },
+    }),
 });
 
 /**
