@@ -151,8 +151,9 @@ pub enum ReplaceFailure<E> {
     /// helper is registered now. The reason is the caller's own: this module
     /// supplies the point where such a decision is possible and takes none.
     RegisterDeclined(E),
-    /// The old process is gone and the replacement was refused: no helper is
-    /// registered now.
+    /// The old process is gone and the replacement reported a refusal. macOS
+    /// can still move the service to approval-required or enabled, so callers
+    /// must re-read status before describing the resulting state.
     RegisterFailed(ServiceCallError),
     /// The old process is gone and the replacement never reported. Whether it
     /// took is unknown — only a fresh observation can say.
@@ -181,7 +182,8 @@ pub enum RegisterFailure {
     /// Refused before anything was dispatched: the main thread is the one that
     /// has to make the call, so awaiting it there would starve the queue.
     CalledOnMainThread,
-    /// The platform refused the registration; nothing is registered.
+    /// The platform reported a registration refusal. macOS can still move the
+    /// service to approval-required or enabled, so callers re-read status.
     Failed(ServiceCallError),
     /// The call never reported inside the window. Whether it took is unknown —
     /// only a fresh observation can say.

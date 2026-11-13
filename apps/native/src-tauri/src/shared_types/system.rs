@@ -57,6 +57,24 @@ pub enum PermissionStatus {
     Unknown,
 }
 
+/// Product-facing state of the unattended sync helper.
+///
+/// The helper is represented in the permissions list, but its lifecycle has
+/// more states than a normal permission grant. Keeping those states typed lets
+/// every UI surface use the same copy and actions without parsing diagnostic
+/// text or overloading [`PermissionStatus`].
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Type, Copy)]
+#[serde(rename_all = "camelCase")]
+pub enum HelperPermissionPhase {
+    Ready,
+    ApprovalRequired,
+    Reconciling,
+    WaitingForActivation,
+    NeedsUserAction,
+    Failed,
+    Disabled,
+}
+
 /// Individual permission state.
 #[derive(Debug, Clone, Serialize, Deserialize, Type)]
 #[serde(rename_all = "camelCase")]
@@ -83,6 +101,9 @@ pub struct Permission {
     /// Manual instructions for permissions that cannot be requested programmatically.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub instructions: Option<String>,
+    /// Helper-specific lifecycle state. Absent for normal permission rows.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub helper_phase: Option<HelperPermissionPhase>,
 }
 
 /// All permissions state.

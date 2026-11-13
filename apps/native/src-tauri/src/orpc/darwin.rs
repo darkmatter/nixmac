@@ -8,7 +8,7 @@ use crate::privileged_helper::{
 };
 use crate::shared_types::{
     AppManagementCheckResult, BuildCheckResult, EtcClobberCheckResult, EvolveCancelResult,
-    OkResult, RebuildStatus, RollbackResult,
+    HelperPermissionPhase, OkResult, RebuildStatus, RollbackResult,
 };
 use crate::system::helper_permission;
 use orpc::*;
@@ -75,6 +75,7 @@ struct InstallSyncAgentInput {
 #[serde(rename_all = "camelCase")]
 struct HelperReport {
     at_this_build: bool,
+    phase: HelperPermissionPhase,
     detail: String,
 }
 
@@ -85,7 +86,8 @@ impl HelperReport {
                 report,
                 crate::privileged_helper::reconcile::Reconciled::AtThisBuild
             ),
-            detail: helper_permission::describe(report),
+            phase: helper_permission::phase(report),
+            detail: helper_permission::action_detail(report),
         }
     }
 }
@@ -233,6 +235,14 @@ async fn helper_grant(ctx: OrpcCtx, _input: ()) -> Result<HelperReport, ORPCErro
     Ok(HelperReport::of(&helper_permission::grant(&ctx.app)))
 }
 
+/// Retry the stored decision without recording a new one or opening System
+/// Settings. A stored Enable retries as an explicit Enable; a stored Disable
+/// retries the removal; an undecided user is handled exactly like an
+/// observation, including adoption of a registration that already exists.
+async fn helper_retry(ctx: OrpcCtx, _input: ()) -> Result<HelperReport, ORPCError> {
+    Ok(HelperReport::of(&helper_permission::retry(&ctx.app)))
+}
+
 /// The explicit Disable action: unregister the helper (deferring while an
 /// activation runs) and
 /// register nothing. No later automatic run overrides it.
@@ -318,6 +328,9 @@ pub fn routes() -> Router<OrpcCtx> {
         "helperGrant" => os::<OrpcCtx>()
             .output(orpc_specta::specta::<HelperReport>())
             .handler(helper_grant),
+        "helperRetry" => os::<OrpcCtx>()
+            .output(orpc_specta::specta::<HelperReport>())
+            .handler(helper_retry),
         "helperDisable" => os::<OrpcCtx>()
             .output(orpc_specta::specta::<HelperReport>())
             .handler(helper_disable),
