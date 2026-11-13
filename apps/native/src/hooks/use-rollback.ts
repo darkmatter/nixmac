@@ -1,5 +1,5 @@
 import { uiActions, viewModelActions } from "@nixmac/state";
-import { useRebuildStream } from "@/hooks/use-rebuild-stream";
+import { clearRebuildRetry, useRebuildStream } from "@/hooks/use-rebuild-stream";
 import { getTelemetry } from "@/lib/telemetry/instance";
 import { client } from "@/lib/orpc";
 /**
@@ -10,7 +10,23 @@ import { client } from "@/lib/orpc";
 export function useRollback() {
   const { triggerRebuild } = useRebuildStream();
 
+  const rebuildRollback = async (storePath: string, changesetId: number | null) => {
+    await triggerRebuild({
+      context: "rollback",
+      storePath,
+      retry: () => rebuildRollback(storePath, changesetId),
+      onSuccess: async () => {
+        await client.darwin.finalizeRollback({
+          storePath,
+          changesetId,
+        });
+        clearRebuildRetry();
+      },
+    });
+  };
+
   const handleRollback = async () => {
+    clearRebuildRetry();
     const wasCommittable = viewModelActions.getState().evolve?.committable === true;
 
     uiActions.setProcessing(true, "cancel");
@@ -25,16 +41,7 @@ export function useRollback() {
       getTelemetry().captureEvent({ name: "rollback_performed" });
 
       if (result.rollbackStorePath && wasCommittable) {
-        await triggerRebuild({
-          context: "rollback",
-          storePath: result.rollbackStorePath,
-          onSuccess: async () => {
-            await client.darwin.finalizeRollback({
-              storePath: result.rollbackStorePath,
-              changesetId: result.rollbackChangesetId,
-            });
-          },
-        });
+        await rebuildRollback(result.rollbackStorePath, result.rollbackChangesetId);
       } else {
         uiActions.setProcessing(false);
       }
