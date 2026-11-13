@@ -10,6 +10,7 @@ import { PreferencesTab } from "@/components/widget/settings/preferences-tab";
 import { TuningTab } from "@/components/widget/settings/tuning-tab";
 import { useDarwinConfig } from "@/hooks/use-darwin-config";
 import { tauriAPI } from "@/ipc/api";
+import { client } from "@/lib/orpc";
 import { modelForProvider } from "@/lib/providers/ai-models";
 import { resolveOpenAiCompatibleProvider } from "@/lib/providers/ai-provider-validation";
 import {
@@ -125,16 +126,14 @@ export function SettingsDialog() {
     // deprecated(orpc): replace with client/orpc from @/lib/orpc
     await tauriAPI.ui.setPrefs({ openaiCompatibleApiBaseUrl: url });
     // Clear cached OpenAI-compatible models when the endpoint changes.
-    // deprecated(orpc): replace with client/orpc from @/lib/orpc
-    await tauriAPI.models.clearCached("vllm");
+    await client.models.clearCached({ provider: "openai_compatible" });
   };
 
   const saveOpenaiCompatibleKey = async (key: string) => {
     // deprecated(orpc): replace with client/orpc from @/lib/orpc
     await tauriAPI.ui.setPrefs({ openaiCompatibleApiKey: key });
     // Clear cached OpenAI-compatible models because auth can change visible models.
-    // deprecated(orpc): replace with client/orpc from @/lib/orpc
-    await tauriAPI.models.clearCached("vllm");
+    await client.models.clearCached({ provider: "openai_compatible" });
   };
 
   const form = useForm({

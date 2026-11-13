@@ -178,7 +178,7 @@ export function AiModelsTab({
                   selector={(state: any) => [
                     state.values.evolveProvider,
                     state.values.openaiApiKey,
-                    state.values.vllmApiBaseUrl,
+                    state.values.openaiCompatibleApiBaseUrl,
                   ]}
                 >
                   {([evolveProvider]: any[]) => (
@@ -292,7 +292,7 @@ export function AiModelsTab({
                   selector={(state: any) => [
                     state.values.summaryProvider,
                     state.values.openaiApiKey,
-                    state.values.vllmApiBaseUrl,
+                    state.values.openaiCompatibleApiBaseUrl,
                   ]}
                 >
                   {([summaryProvider]: any[]) => (
