@@ -164,6 +164,8 @@ pub struct RebuildStatus {
     pub error_message: Option<String>,
     /// Whether the failure left the system untouched.
     pub system_untouched: Option<bool>,
+    /// Exact transcript of the last finished run; cleared when another run starts.
+    pub log_file: Option<String>,
 }
 
 /// A single macOS system default that differs from the factory value.

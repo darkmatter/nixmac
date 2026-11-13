@@ -280,7 +280,11 @@ export function DarwinWidget() {
   if (showOnboarding) {
     return (
       <div className="flex min-h-[600px] min-w-[800px] h-full w-full flex-col bg-background/60">
-        <OnboardingFlow />
+        <div className="relative flex min-h-0 flex-1 flex-col">
+          <ErrorMessage />
+          <OnboardingFlow />
+          <EvolveOverlayPanel />
+        </div>
         <EtcClobberWarningDialog />
         <FeedbackDialog />
         <Console />

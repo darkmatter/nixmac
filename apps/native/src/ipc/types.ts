@@ -2034,7 +2034,11 @@ errorMessage: string | null;
 /**
  * Whether the failure left the system untouched.
  */
-systemUntouched: boolean | null }
+systemUntouched: boolean | null;
+/**
+ * Exact transcript of the last finished run; cleared when another run starts.
+ */
+logFile: string | null }
 
 /**
  * Public-key format used by a secret recipient.
