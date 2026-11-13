@@ -1,5 +1,5 @@
 use super::{AiProvider, ProviderError, ProviderResponse};
-use crate::ai::providers::cli::{CliTool, run_cli_process};
+use crate::ai::providers::cli::{CliTool, invocation_args, run_cli_process};
 use crate::evolve::messages::{Message, Tool as GenericTool, ToolCall};
 use anyhow::anyhow;
 use async_trait::async_trait;
@@ -278,21 +278,10 @@ impl AiProvider for CliProvider {
             prompt.len()
         );
 
-        let mut args: Vec<String> = match &self.tool {
-            CliTool::Claude => vec!["-p".into(), "--output-format".into(), "json".into()],
-            CliTool::Codex => vec!["--quiet".into()],
-            CliTool::OpenCode => vec!["-p".into()],
-        };
-
-        // Append model flag when applicable
-        if let Some(flag) = self.tool.model_flag()
-            && !self.model.is_empty()
-            && self.model != self.tool.binary_name()
-        {
-            args.push(flag.to_string());
-            args.push(self.model.clone());
-        }
-
+        // Argv (including the flags that disable the child's own tools) is
+        // owned by `invocation_args` so this path cannot drift from the
+        // summarization path.
+        let args = invocation_args(&self.tool, Some(&self.model)).map_err(ProviderError::Other)?;
         let arg_refs: Vec<&str> = args.iter().map(|s| s.as_str()).collect();
 
         let raw = run_cli_process(self.tool.binary_name(), &arg_refs, &prompt, 300)
