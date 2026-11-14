@@ -20,7 +20,7 @@ interface UpdateState {
   /** Error message if something failed */
   error: string | null;
   /** Which phase produced the error */
-  errorSource: "check" | "install" | null;
+  errorSource: "install" | null;
 }
 
 const initialState: UpdateState = {
@@ -78,12 +78,15 @@ export function useUpdater() {
         return;
       }
 
-      console.error("[updater] check failed:", err);
+      // Launch-time checks are best effort. Keep diagnostics local and send
+      // only a fixed reason code: updater errors may contain manifest URLs.
+      console.warn("[updater] check failed:", err);
+      getTelemetry().captureEvent({ name: "update_check_failed", props: { reason: "check_failed" } });
       setState((s) => ({
         ...s,
         checking: false,
-        error: err instanceof Error ? err.message : String(err),
-        errorSource: "check",
+        error: null,
+        errorSource: null,
       }));
     }
   }, [isDevMode]);
