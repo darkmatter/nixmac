@@ -56,17 +56,26 @@ pub fn observe<R: Runtime>(app: &AppHandle<R>) -> Reconciled {
 
 /// [`observe`], with the pass's place in the order of finished passes (see
 /// `reconcile::take_pass_order`). `None` for a `Busy` observation.
+///
+/// The report is recorded in the presentation state by the pass itself,
+/// before it gives up the reconciliation slot, under the generation the
+/// observation began in. Passes hold the slot one at a time, so the
+/// presentation state receives reports in the order the passes ran: an
+/// observation cannot be recorded after the action that followed it, nor a
+/// failed action after the observation that found what it left behind.
 pub(crate) fn observe_ordered<R: Runtime>(app: &AppHandle<R>) -> (Reconciled, Option<u64>) {
-    observe_ordered_with(&PRESENTATION, || {
-        let report = reconcile::reconcile(&LiveEnvironment::new(app));
-        (report, reconcile::take_pass_order())
-    })
+    let generation = PRESENTATION.generation();
+    let report = reconcile::reconcile(&LiveEnvironment::new(app), |report, order| {
+        PRESENTATION.note_report(report, generation, Some(order));
+    });
+    (report, reconcile::take_pass_order())
 }
 
-/// Runs one observation and records it in the presentation state under the
-/// generation it began in and the order its pass finished in. The order is
-/// what keeps an observation that finished before an action's pass, and is
-/// only recorded after it, from undoing what that action recorded.
+/// An observation recorded after it returns, with whatever order the test
+/// gives it. Production records inside the pass ([`observe_ordered`]) and so
+/// always in order; this is how the tests exercise the refusal of an older
+/// report that the presentation state keeps as a second line of defence.
+#[cfg(test)]
 fn observe_ordered_with(
     presentation: &FailurePresentation,
     observe: impl FnOnce() -> (Reconciled, Option<u64>),
@@ -146,9 +155,10 @@ pub fn grant<R: Runtime>(app: &AppHandle<R>) -> Reconciled {
     if awaiting_approval_already {
         service::open_login_items_settings();
     }
-    let report = reconcile::grant(&LiveEnvironment::new(app));
+    let report = reconcile::grant(&LiveEnvironment::new(app), |report, order| {
+        PRESENTATION.note_action_report(report, generation, Some(order), false);
+    });
     let order = reconcile::take_pass_order();
-    PRESENTATION.note_action_report(&report, generation, order);
     if !awaiting_approval_already && matches!(report, Reconciled::PendingApproval) {
         service::open_login_items_settings();
     }
@@ -169,15 +179,14 @@ pub fn grant<R: Runtime>(app: &AppHandle<R>) -> Reconciled {
 /// retry ends at approval, the row's deep link is the way to Login Items.
 pub fn retry<R: Runtime>(app: &AppHandle<R>) -> Reconciled {
     let generation = PRESENTATION.begin_user_attempt();
-    let report = reconcile::retry(&LiveEnvironment::new(app));
+    // This is an explicit, bounded retry whose progress the button showed. If
+    // its pass still stops, the failure is shown at once (the `true`), keeping
+    // recovery available rather than leaving a spinner up until the slow
+    // background cadence wakes again.
+    let report = reconcile::retry(&LiveEnvironment::new(app), |report, order| {
+        PRESENTATION.note_action_report(report, generation, Some(order), true);
+    });
     let order = reconcile::take_pass_order();
-    PRESENTATION.note_action_report(&report, generation, order);
-    if matches!(report, Reconciled::Stopped(_)) {
-        // This was an explicit, bounded retry whose progress the button showed.
-        // If that pass still stopped, keep recovery available rather than
-        // leaving a spinner up until the slow background cadence wakes again.
-        PRESENTATION.show_failure(generation);
-    }
     publish_action_report(app, &report, order);
     start_converging(app);
     report
@@ -188,9 +197,10 @@ pub fn retry<R: Runtime>(app: &AppHandle<R>) -> Reconciled {
 /// the main thread, for [`grant`]'s reason.
 pub fn disable<R: Runtime>(app: &AppHandle<R>) -> Reconciled {
     let generation = PRESENTATION.begin_user_attempt();
-    let report = reconcile::disable(&LiveEnvironment::new(app));
+    let report = reconcile::disable(&LiveEnvironment::new(app), |report, order| {
+        PRESENTATION.note_action_report(report, generation, Some(order), false);
+    });
     let order = reconcile::take_pass_order();
-    PRESENTATION.note_action_report(&report, generation, order);
     publish_action_report(app, &report, order);
     start_converging(app);
     report
@@ -445,10 +455,10 @@ struct FailurePresentationState {
     /// outcome of a failed attempt, not a first sighting.
     stopped_short: bool,
     /// The order of the newest pass recorded here (see
-    /// `reconcile::take_pass_order`). A report from an older pass is refused.
+    /// `reconcile::take_pass_order`). Passes record themselves before giving
+    /// up the reconciliation slot, so reports arrive in this order; one that
+    /// did not is refused.
     newest_order: u64,
-    /// The newest report recorded found the registration missing.
-    newest_unavailable: bool,
     last_failure_detail: Option<String>,
 }
 
@@ -459,7 +469,6 @@ static PRESENTATION: FailurePresentation = FailurePresentation {
         failure_visible: false,
         stopped_short: false,
         newest_order: 0,
-        newest_unavailable: false,
         last_failure_detail: None,
     }),
 };
@@ -514,9 +523,26 @@ impl FailurePresentation {
         state.generation
     }
 
+    /// Shows a failure whatever was recorded last: how the tests stage one.
+    /// Production shows a failure only in the step that records a stopped
+    /// Retry ([`Self::note_action_report`]) or while a stopped pass still
+    /// stands ([`Self::show_standing_failure`]).
+    #[cfg(test)]
     fn show_failure(&self, generation: u64) {
         let mut state = self.state.lock().unwrap_or_else(PoisonError::into_inner);
         if state.generation == generation {
+            state.failure_visible = true;
+        }
+    }
+
+    /// Shows the failure for the loop, which calls this after its pass has
+    /// given up the reconciliation slot: by then a later pass may have settled
+    /// cleanly, and a failure shown over that would outlive it (a missing
+    /// registration reported next would read as a failed attempt). So this
+    /// shows the failure only while a stopped pass is still what stands.
+    fn show_standing_failure(&self, generation: u64) {
+        let mut state = self.state.lock().unwrap_or_else(PoisonError::into_inner);
+        if state.generation == generation && state.stopped_short {
             state.failure_visible = true;
         }
     }
@@ -529,11 +555,12 @@ impl FailurePresentation {
         self.note_report(report, generation, None);
     }
 
-    /// Records a report from the pass that finished `order`-th. Passes run one
-    /// at a time but reach this lock in any order, so a report older than the
-    /// newest one recorded is refused: applying it would let an observation
-    /// from before an action clear the failure that action recorded, even
-    /// inside the action's own generation.
+    /// Records a report from the pass that finished `order`-th. Every pass
+    /// calls this (or [`Self::note_action_report`]) before it gives up the
+    /// reconciliation slot, so reports reach this lock in pass order. A report
+    /// older than the newest one recorded is refused all the same: applying
+    /// it would let an observation from before an action clear the failure
+    /// that action recorded, even inside the action's own generation.
     fn note_report(&self, report: &Reconciled, generation: u64, order: Option<u64>) {
         let mut state = self.state.lock().unwrap_or_else(PoisonError::into_inner);
         Self::apply(&mut state, report, generation, order);
@@ -543,10 +570,23 @@ impl FailurePresentation {
     /// step, that the pass has finished (see [`Self::action_epoch`]). One step
     /// so the loop's check-and-record in [`Self::note_loop_report`] sees
     /// either neither or both.
-    fn note_action_report(&self, report: &Reconciled, generation: u64, order: Option<u64>) {
+    ///
+    /// `show_stopped` shows the failure at once when this report stopped short
+    /// and was recorded (a Retry's pass; see [`retry`]). The same step again,
+    /// so no other report can land between the record and the flag.
+    fn note_action_report(
+        &self,
+        report: &Reconciled,
+        generation: u64,
+        order: Option<u64>,
+        show_stopped: bool,
+    ) {
         let mut state = self.state.lock().unwrap_or_else(PoisonError::into_inner);
         state.finished_actions = state.finished_actions.wrapping_add(1);
-        Self::apply(&mut state, report, generation, order);
+        let recorded = Self::apply(&mut state, report, generation, order);
+        if recorded && show_stopped && matches!(report, Reconciled::Stopped(_)) {
+            state.failure_visible = true;
+        }
     }
 
     /// Records the report the loop is about to publish, unless an action began
@@ -577,33 +617,22 @@ impl FailurePresentation {
             .newest_order
     }
 
+    /// Whether the report was recorded.
     fn apply(
         state: &mut FailurePresentationState,
         report: &Reconciled,
         generation: u64,
         order: Option<u64>,
-    ) {
+    ) -> bool {
         if state.generation != generation || matches!(report, Reconciled::Busy) {
-            return;
+            return false;
         }
         if let Some(order) = order {
             if order <= state.newest_order {
-                // A pass that stopped short can reach this lock after the
-                // later observation that found the registration missing: the
-                // slot is released before either records. Its report is too
-                // old to become the current one, but it is still the reason
-                // the registration is missing, so keep it as that evidence.
-                // Nothing is kept once a newer report has settled cleanly.
-                if matches!(report, Reconciled::Stopped(_)) && state.newest_unavailable {
-                    state.last_failure_detail = Some(describe(report));
-                    state.stopped_short = true;
-                    state.failure_visible = true;
-                }
-                return;
+                return false;
             }
             state.newest_order = order;
         }
-        state.newest_unavailable = matches!(report, Reconciled::RegistrationUnavailable);
         match report {
             Reconciled::Stopped(_) => {
                 state.last_failure_detail = Some(describe(report));
@@ -630,6 +659,7 @@ impl FailurePresentation {
                 state.stopped_short = false;
             }
         }
+        true
     }
 }
 
@@ -932,8 +962,9 @@ fn drive_with_clock(
         let elapsed = presentation_started
             .map(|started| now().saturating_duration_since(started))
             .unwrap_or_default();
+        presentation.note_loop_report(&report, attempt_epoch, order_before);
         if should_show_failure(elapsed, working) {
-            presentation.show_failure(attempt_generation);
+            presentation.show_standing_failure(attempt_generation);
         }
         publish(&report);
 
@@ -1476,7 +1507,12 @@ mod tests {
                 match attempts.get() {
                     1 => {
                         // The Retry's own pass ran after this one and settled.
-                        presentation.note_action_report(&Reconciled::Removed, retry, Some(2));
+                        presentation.note_action_report(
+                            &Reconciled::Removed,
+                            retry,
+                            Some(2),
+                            false,
+                        );
                         refused.clone()
                     }
                     _ => Reconciled::Removed,
@@ -1630,7 +1666,7 @@ mod tests {
         let failed = stopped("the helper could not be registered: refused");
 
         let (overtaken, _) = observe_ordered_with(&presentation, || {
-            presentation.note_action_report(&failed, enable, Some(2));
+            presentation.note_action_report(&failed, enable, Some(2), false);
             (Reconciled::NoHelper, Some(1))
         });
         assert_eq!(overtaken, Reconciled::NoHelper);
@@ -1663,7 +1699,7 @@ mod tests {
         let retry = presentation.begin_user_attempt();
         let epoch = presentation.action_epoch();
         let failed = stopped("the helper could not be registered: refused");
-        presentation.note_action_report(&failed, retry, Some(5));
+        presentation.note_action_report(&failed, retry, Some(5), false);
         presentation.show_failure(retry);
 
         presentation.note_loop_report(&Reconciled::NoHelper, epoch, 0);
@@ -1681,39 +1717,64 @@ mod tests {
     }
 
     #[test]
-    fn a_failed_enable_recorded_after_the_observation_that_followed_it_is_kept() {
-        // The reverse arrival: Enable's register is refused (pass 1) and the
-        // slot is released; an observation then finds the registration
-        // missing (pass 2) and records first. Enable's report is the older
-        // one, but it is why the registration is missing, so the failure and
-        // its diagnostic must survive and the row must say the attempt failed.
+    fn a_report_older_than_the_newest_recorded_one_is_refused_whole() {
+        // Passes record themselves before they give up the reconciliation
+        // slot, so this does not happen in production (the reconciler's tests
+        // pin that). The presentation state refuses it all the same, and
+        // refuses all of it: an out-of-order report changes nothing, whatever
+        // it says.
         let presentation = FailurePresentation::default();
-        let enable = presentation.begin_user_attempt();
+        let attempt = presentation.begin_user_attempt();
         let failed = stopped("the helper could not be registered: refused");
-        presentation.note_report(&Reconciled::RegistrationUnavailable, enable, Some(2));
-        assert!(!presentation.failure_visible());
+        let unavailable = Reconciled::RegistrationUnavailable;
+        presentation.note_report(&unavailable, attempt, Some(2));
+        let epoch = presentation.action_epoch();
 
-        presentation.note_action_report(&failed, enable, Some(1));
+        presentation.note_action_report(&failed, attempt, Some(1), true);
+        assert!(!presentation.failure_visible());
+        assert_eq!(
+            presentation.last_failure_detail(),
+            Some(describe(&unavailable))
+        );
+        // The action still counts as finished for the loop's staleness check.
+        assert_ne!(presentation.action_epoch(), epoch);
+
+        presentation.note_report(&Reconciled::AtThisBuild, attempt, Some(1));
+        assert_eq!(
+            presentation.last_failure_detail(),
+            Some(describe(&unavailable))
+        );
+    }
+
+    #[test]
+    fn a_retry_that_stops_short_is_shown_as_failed_in_the_step_that_records_it() {
+        let failed = stopped("the helper could not be registered: refused");
+
+        let presentation = FailurePresentation::default();
+        let retry = presentation.begin_user_attempt();
+        presentation.note_action_report(&failed, retry, Some(1), true);
         assert!(presentation.failure_visible());
         assert_eq!(presentation.last_failure_detail(), Some(describe(&failed)));
 
-        // The next observation keeps it.
-        presentation.note_report(&Reconciled::RegistrationUnavailable, enable, Some(3));
-        let (_, detail, _) = row_with_failure_visibility(
-            &Reconciled::RegistrationUnavailable,
-            false,
-            presentation.failure_visible(),
-        );
-        assert_eq!(detail, HELPER_UPDATE_FAILED);
-        assert_eq!(presentation.last_failure_detail(), Some(describe(&failed)));
+        // Enable and Disable leave the display window to the loop.
+        let presentation = FailurePresentation::default();
+        let enable = presentation.begin_user_attempt();
+        presentation.note_action_report(&failed, enable, Some(1), false);
+        assert!(!presentation.failure_visible());
 
-        // An older failure is not revived over a newer clean report.
-        let settled = FailurePresentation::default();
-        let attempt = settled.begin_user_attempt();
-        settled.note_report(&Reconciled::AtThisBuild, attempt, Some(5));
-        settled.note_action_report(&failed, attempt, Some(4));
-        assert!(!settled.failure_visible());
-        assert!(settled.last_failure_detail().is_none());
+        // A Retry that did not stop short shows nothing.
+        let presentation = FailurePresentation::default();
+        let retry = presentation.begin_user_attempt();
+        presentation.note_action_report(&Reconciled::PendingApproval, retry, Some(1), true);
+        assert!(!presentation.failure_visible());
+
+        // Nor does one overtaken by a newer attempt.
+        let presentation = FailurePresentation::default();
+        let retry = presentation.begin_user_attempt();
+        let newer = presentation.begin_user_attempt();
+        presentation.note_action_report(&failed, retry, Some(1), true);
+        assert!(!presentation.failure_visible());
+        assert_ne!(retry, newer);
     }
 
     #[test]
@@ -1756,6 +1817,57 @@ mod tests {
             published,
             vec![Reconciled::PendingApproval, Reconciled::AtThisBuild]
         );
+    }
+
+    #[test]
+    fn the_loop_does_not_replay_a_settled_report_over_a_newer_recorded_one() {
+        // The same at the loop's other record: its observation settles (pass
+        // 1), a refresh records a pass that stopped short (pass 2), and the
+        // loop then publishes and exits without undoing the newer record.
+        let presentation = FailurePresentation::default();
+        let failed = stopped("the helper could not be registered: refused");
+        let mut published = Vec::new();
+        drive(
+            &presentation,
+            || {
+                let generation = presentation.generation();
+                presentation.note_report(&Reconciled::AtThisBuild, generation, Some(1));
+                presentation.note_report(&failed, generation, Some(2));
+                Reconciled::AtThisBuild
+            },
+            |report| published.push(report.clone()),
+            |_| {},
+        );
+        assert_eq!(published, vec![Reconciled::AtThisBuild]);
+        assert_eq!(presentation.last_failure_detail(), Some(describe(&failed)));
+    }
+
+    #[test]
+    fn the_loop_does_not_show_a_failure_over_a_newer_clean_report() {
+        // The loop's pass stops short (pass 1) and a refresh then settles
+        // cleanly (pass 2) before the loop decides to show the failure. The
+        // bound is reached, so the loop would show it; nothing may be shown
+        // over the newer clean report, or a missing registration reported
+        // next would read as a failed attempt.
+        let presentation = FailurePresentation::default();
+        let failed = stopped("the helper did not answer");
+        let attempts = std::cell::Cell::new(0);
+        drive(
+            &presentation,
+            || {
+                attempts.set(attempts.get() + 1);
+                let generation = presentation.generation();
+                let order = attempts.get() * 2;
+                presentation.note_report(&failed, generation, Some(order - 1));
+                presentation.note_report(&Reconciled::AtThisBuild, generation, Some(order));
+                failed.clone()
+            },
+            |_| {},
+            |_| {},
+        );
+        assert_eq!(attempts.get(), u64::from(MAX_ATTEMPTS));
+        assert!(!presentation.failure_visible());
+        assert!(presentation.last_failure_detail().is_none());
     }
 
     #[test]

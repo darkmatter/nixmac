@@ -449,8 +449,12 @@ fn judge_gates(
 /// Reconciles the installed helper with this build. Idempotent, and its normal
 /// path is a single `Status` exchange, so running it at startup and on every
 /// status refresh is cheap.
-pub fn reconcile<E: Environment>(env: &E) -> Reconciled {
-    run(&RUNNING, env)
+///
+/// `record` is handed the report and its place among finished passes before
+/// the pass gives up the single-flight slot (see [`reported`]). It is not
+/// called for `Busy`. The other entry points take one for the same reason.
+pub fn reconcile<E: Environment>(env: &E, record: impl FnOnce(&Reconciled, u64)) -> Reconciled {
+    run_then(&RUNNING, env, record)
 }
 
 /// The explicit Grant action: record the decision, then reconcile under it.
@@ -458,8 +462,8 @@ pub fn reconcile<E: Environment>(env: &E) -> Reconciled {
 /// step, and the write is idempotent.
 ///
 /// Opening Login Items is the caller's action, never this function's.
-pub fn grant<E: Environment>(env: &E) -> Reconciled {
-    decide(&RUNNING, env, HelperDecision::Granted)
+pub fn grant<E: Environment>(env: &E, record: impl FnOnce(&Reconciled, u64)) -> Reconciled {
+    decide_then(&RUNNING, env, HelperDecision::Granted, record)
 }
 
 /// The explicit Retry action: carry out the decision already stored. A stored
@@ -472,15 +476,15 @@ pub fn grant<E: Environment>(env: &E) -> Reconciled {
 /// missing helper for anyone who has not chosen Enable.
 ///
 /// Opening System Settings is never this function's action, nor its caller's.
-pub fn retry<E: Environment>(env: &E) -> Reconciled {
-    retry_with(&RUNNING, env)
+pub fn retry<E: Environment>(env: &E, record: impl FnOnce(&Reconciled, u64)) -> Reconciled {
+    retry_then(&RUNNING, env, record)
 }
 
 /// The explicit Disable action: record the decision, then reconcile under it.
 /// The decision is written first, so a crash halfway resumes the removal
 /// rather than repairing the helper.
-pub fn disable<E: Environment>(env: &E) -> Reconciled {
-    decide(&RUNNING, env, HelperDecision::Disabled)
+pub fn disable<E: Environment>(env: &E, record: impl FnOnce(&Reconciled, u64)) -> Reconciled {
+    decide_then(&RUNNING, env, HelperDecision::Disabled, record)
 }
 
 /// Stores a decision and reconciles under it. The slot is a parameter so tests
@@ -490,14 +494,19 @@ pub fn disable<E: Environment>(env: &E) -> Reconciled {
 /// waits out an in-flight pass (bounded — see [`RUNNING`]) and then makes its
 /// own, so the pass that carries the decision out always exists and its
 /// report is what the click's caller renders.
-fn decide<E: Environment>(running: &Mutex<()>, env: &E, decision: HelperDecision) -> Reconciled {
+fn decide_then<E: Environment>(
+    running: &Mutex<()>,
+    env: &E,
+    decision: HelperDecision,
+    record: impl FnOnce(&Reconciled, u64),
+) -> Reconciled {
     // A copy that may not mutate a helper may not record a decision about one
     // either — the gates cover the write, not just the effects.
     if let Err(report) = env.gate() {
-        return reported(report);
+        return reported(report, record);
     }
     if let Err(detail) = env.store_decision(decision) {
-        return reported(preference_unwritable(detail));
+        return reported(preference_unwritable(detail), record);
     }
     // Nothing this slot guards is half-applied by a panic — it guards no
     // data — so a poisoned lock is taken rather than propagated.
@@ -506,7 +515,15 @@ fn decide<E: Environment>(running: &Mutex<()>, env: &E, decision: HelperDecision
         HelperDecision::Granted => Invocation::Enable,
         HelperDecision::Disabled => Invocation::Observe,
     };
-    reported(converge(env, invocation).unwrap_or_else(|report| report))
+    reported(
+        converge(env, invocation).unwrap_or_else(|report| report),
+        record,
+    )
+}
+
+#[cfg(test)]
+fn decide<E: Environment>(running: &Mutex<()>, env: &E, decision: HelperDecision) -> Reconciled {
+    decide_then(running, env, decision, |_, _| {})
 }
 
 /// Retries under the stored decision. The slot is a parameter for the same
@@ -517,7 +534,11 @@ fn decide<E: Environment>(running: &Mutex<()>, env: &E, decision: HelperDecision
 /// register a missing helper, and [`commit_to_register`] re-reads the decision
 /// immediately before that register, so a Disable recorded in between still
 /// declines it. Any other decision runs the observation table unchanged.
-fn retry_with<E: Environment>(running: &Mutex<()>, env: &E) -> Reconciled {
+fn retry_then<E: Environment>(
+    running: &Mutex<()>,
+    env: &E,
+    record: impl FnOnce(&Reconciled, u64),
+) -> Reconciled {
     // Nothing is written before the pass, so the pass's own first gate is the
     // only one a retry needs. Poison handled as in [`decide`].
     let _slot = running.lock().unwrap_or_else(PoisonError::into_inner);
@@ -527,25 +548,45 @@ fn retry_with<E: Environment>(running: &Mutex<()>, env: &E) -> Reconciled {
         // observation table already removes a disabled helper and never
         // registers for an undecided one.
         Ok(HelperPreference::Disabled | HelperPreference::Unset) => Invocation::Observe,
-        Err(detail) => return reported(preference_unreadable(detail)),
+        Err(detail) => return reported(preference_unreadable(detail), record),
     };
-    reported(converge(env, invocation).unwrap_or_else(|report| report))
+    reported(
+        converge(env, invocation).unwrap_or_else(|report| report),
+        record,
+    )
 }
 
-fn run<E: Environment>(running: &Mutex<()>, env: &E) -> Reconciled {
+#[cfg(test)]
+fn retry_with<E: Environment>(running: &Mutex<()>, env: &E) -> Reconciled {
+    retry_then(running, env, |_, _| {})
+}
+
+fn run_then<E: Environment>(
+    running: &Mutex<()>,
+    env: &E,
+    record: impl FnOnce(&Reconciled, u64),
+) -> Reconciled {
     let _slot = match running.try_lock() {
         Ok(slot) => slot,
         // Poison handled as in [`decide`].
         Err(TryLockError::Poisoned(poisoned)) => poisoned.into_inner(),
         // Immediate, never a wait: observations are cheap to repeat and the
         // convergence loop repeats them on its own cadence.
-        Err(TryLockError::WouldBlock) => return reported(Reconciled::Busy),
+        Err(TryLockError::WouldBlock) => return reported(Reconciled::Busy, record),
     };
-    reported(converge(env, Invocation::Observe).unwrap_or_else(|report| report))
+    reported(
+        converge(env, Invocation::Observe).unwrap_or_else(|report| report),
+        record,
+    )
+}
+
+#[cfg(test)]
+fn run<E: Environment>(running: &Mutex<()>, env: &E) -> Reconciled {
+    run_then(running, env, |_, _| {})
 }
 
 /// Logs one run's outcome, stamps its place in the order of finished passes,
-/// and hands it back.
+/// hands the report and its stamp to `record`, and returns the report.
 ///
 /// Every caller that holds the single-flight slot calls this before releasing
 /// it (the slot guard outlives the tail expression that calls this), so the
@@ -553,13 +594,24 @@ fn run<E: Environment>(running: &Mutex<()>, env: &E) -> Reconciled {
 /// order is what lets the permission surface refuse a report that finished
 /// before the one it already shows, whichever thread gets to publish first.
 /// A report produced without a pass (a refused gate, an unwritable decision)
-/// is stamped when it is made. `Busy` learned nothing and gets no stamp.
-fn reported(outcome: Reconciled) -> Reconciled {
+/// is stamped when it is made. `Busy` learned nothing: it gets no stamp and
+/// `record` is not called.
+///
+/// `record` runs under [`STAMPING`], in the same step as the stamp. Whatever
+/// it writes is therefore written in stamp order, for every report, with or
+/// without the slot: no later pass can be stamped, let alone recorded, until
+/// it returns. A caller that recorded after this function returned would be
+/// racing every other pass for that, since the slot is gone by then. `record`
+/// must be brief and must not reconcile: it runs with the slot held.
+fn reported(outcome: Reconciled, record: impl FnOnce(&Reconciled, u64)) -> Reconciled {
     log::info!("helper reconciliation: {outcome:?}");
     let order = if matches!(outcome, Reconciled::Busy) {
         None
     } else {
-        Some(FINISHED_PASSES.fetch_add(1, Ordering::SeqCst) + 1)
+        let _stamping = STAMPING.lock().unwrap_or_else(PoisonError::into_inner);
+        let order = FINISHED_PASSES.fetch_add(1, Ordering::SeqCst) + 1;
+        record(&outcome, order);
+        Some(order)
     };
     LAST_PASS_ORDER.with(|last| last.set(order));
     outcome
@@ -567,6 +619,10 @@ fn reported(outcome: Reconciled) -> Reconciled {
 
 /// Counts finished passes; see [`reported`].
 static FINISHED_PASSES: AtomicU64 = AtomicU64::new(0);
+
+/// Makes a stamp and the recording of its report one step; see [`reported`].
+/// It guards no data, so a poisoned lock is taken rather than propagated.
+static STAMPING: Mutex<()> = Mutex::new(());
 
 thread_local! {
     /// The stamp of the pass this thread finished last, until it is taken.
@@ -1993,6 +2049,87 @@ mod tests {
         assert_eq!(
             stopped_text(&fresh_run(&world)),
             "the helper registration could not be read: no service"
+        );
+    }
+
+    #[test]
+    fn a_report_is_recorded_before_its_pass_gives_up_the_slot() {
+        // What keeps reports in pass order wherever they are recorded: the
+        // recording happens with the slot still held, so no later pass can
+        // even begin first. An observation tried from inside the recording
+        // finds the slot taken.
+        let slot = Mutex::new(());
+        let recorded = RefCell::new(Vec::new());
+        let world = World::answering(this_build_idle());
+        let during = RefCell::new(None);
+        let report = run_then(&slot, &world, |report, order| {
+            recorded.borrow_mut().push((report.clone(), order));
+            *during.borrow_mut() = Some(run(&slot, &World::answering(this_build_idle())));
+        });
+        assert_eq!(report, Reconciled::AtThisBuild);
+        assert_eq!(during.into_inner(), Some(Reconciled::Busy));
+        let recorded = recorded.into_inner();
+        assert_eq!(recorded.len(), 1);
+        assert_eq!(recorded[0].0, Reconciled::AtThisBuild);
+        // The stamp handed to the recording is the one the caller takes.
+        assert_eq!(take_pass_order(), Some(recorded[0].1));
+    }
+
+    #[test]
+    fn busy_is_not_recorded_and_every_other_report_is_recorded_once() {
+        let slot = Mutex::new(());
+        let held = slot.lock().unwrap();
+        let calls = std::cell::Cell::new(0);
+        let busy = run_then(&slot, &World::default(), |_, _| calls.set(calls.get() + 1));
+        assert_eq!(busy, Reconciled::Busy);
+        assert_eq!(calls.get(), 0);
+        assert_eq!(take_pass_order(), None);
+        drop(held);
+
+        // A decision refused at the gate never reaches the slot, and is
+        // recorded all the same.
+        let refused = Reconciled::Displaced("not in /Applications".to_string());
+        let gated = World::default().with_gates(vec![Err(refused.clone())]);
+        let seen = RefCell::new(Vec::new());
+        let report = decide_then(&slot, &gated, HelperDecision::Granted, |report, _| {
+            seen.borrow_mut().push(report.clone());
+        });
+        assert_eq!(report, refused);
+        assert_eq!(seen.into_inner(), vec![refused]);
+
+        let seen = RefCell::new(Vec::new());
+        let world = World::answering(this_build_idle());
+        let report = retry_then(&slot, &world, |report, _| {
+            seen.borrow_mut().push(report.clone());
+        });
+        assert_eq!(seen.into_inner(), vec![report]);
+    }
+
+    #[test]
+    fn reports_from_racing_passes_are_recorded_in_stamp_order() {
+        // Actions wait for the slot, so every thread's pass runs. Each records
+        // its stamp into one shared list from inside the pass. Recording after
+        // the pass returned, as the callers once did, lets a later pass append
+        // first; recording in the same step as the stamp cannot.
+        let slot = Mutex::new(());
+        let recorded = Mutex::new(Vec::new());
+        std::thread::scope(|scope| {
+            for _ in 0..8 {
+                scope.spawn(|| {
+                    for _ in 0..200 {
+                        let world = World::answering(this_build_idle());
+                        retry_then(&slot, &world, |_, order| {
+                            recorded.lock().unwrap().push(order);
+                        });
+                    }
+                });
+            }
+        });
+        let recorded = recorded.into_inner().unwrap();
+        assert_eq!(recorded.len(), 1600);
+        assert!(
+            recorded.windows(2).all(|pair| pair[0] < pair[1]),
+            "a later pass was recorded before an earlier one"
         );
     }
 
