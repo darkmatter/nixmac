@@ -3,13 +3,14 @@
 import { Button } from "@/components/ui/button";
 import { tauriAPI } from "@/ipc/api";
 import type { Permission } from "@/ipc/types";
+import { DIAGNOSTIC_CODES, diagnostics } from "@/lib/errors";
 import { client, orpc } from "@/lib/orpc";
 import { HELPER_PERMISSION_ID } from "@/lib/permissions";
 import { cn } from "@/lib/utils";
 import { useViewModel } from "@nixmac/state";
 import { useQuery } from "@tanstack/react-query";
 import { AppWindow, Check, ExternalLink, Folder, HardDrive, KeyRound, Loader2, ShieldCheck, Terminal } from "lucide-react";
-import { type ComponentProps, type ReactNode, useEffect, useState } from "react";
+import { type ComponentProps, type ReactNode, useEffect, useRef, useState } from "react";
 
 type ActionButtonProps = {
   idle: ReactNode;
@@ -69,7 +70,7 @@ function grantLabel(perm: Permission): Pick<ActionButtonProps, "idle" | "busy" |
     };
   }
   if (perm.id === HELPER_PERMISSION_ID) {
-    return { idle: perm.status === "unknown" ? "Retry Enable" : "Enable", busy: "Enabling…" };
+    return { idle: "Enable", busy: "Enabling…" };
   }
   return { idle: "Request", busy: "Requesting…" };
 }
@@ -90,13 +91,34 @@ export function PermissionsPanel() {
   // The action in flight, per row. Per row because only the row that owns an
   // action is disabled; a single panel-wide slot would let a click on one row
   // evict another's entry while its action still runs.
-  const [requesting, setRequesting] = useState<ReadonlyMap<string, "grant" | "disable">>(
+  const [requesting, setRequesting] = useState<
+    ReadonlyMap<string, "grant" | "retry" | "disable">
+  >(
     () => new Map(),
   );
-  const [notice, setNotice] = useState<{ tone: "info" | "error"; message: string } | null>(null);
+  // `helper` marks a notice about a helper action. It belongs to the helper
+  // phase it was raised in and is dropped when that phase ends.
+  const [notice, setNotice] = useState<{
+    tone: "info" | "error";
+    message: string;
+    helper?: boolean;
+  } | null>(null);
+  // A helper action's error describes one failure episode. Once the helper row
+  // moves on, including recovering by itself, the error is obsolete: left up,
+  // it would sit next to a Ready row. Each phase change starts a new episode
+  // and clears it, and a request still pending when its episode ends does not
+  // report into the next one. Notices about other permissions are untouched.
+  const helperPhase =
+    permissionsState?.permissions.find((permission) => permission.id === HELPER_PERMISSION_ID)
+      ?.helperPhase ?? null;
+  const helperEpisode = useRef(0);
+  useEffect(() => {
+    helperEpisode.current += 1;
+    setNotice((current) => (current?.helper ? null : current));
+  }, [helperPhase]);
 
   // Updater form: two rows can start or settle in the same tick.
-  function startAction(id: string, action: "grant" | "disable") {
+  function startAction(id: string, action: "grant" | "retry" | "disable") {
     setRequesting((inFlight) => new Map(inFlight).set(id, action));
   }
 
@@ -125,6 +147,8 @@ export function PermissionsPanel() {
     installLocation?.bundlePath != null && !installLocation.inApplicationsDir;
 
   async function handleGrant(permission: Permission) {
+    const isHelper = permission.id === HELPER_PERMISSION_ID;
+    const episode = helperEpisode.current;
     startAction(permission.id, "grant");
     setNotice(null);
     try {
@@ -143,21 +167,9 @@ export function PermissionsPanel() {
             "nixmac opened System Settings → Privacy & Security → App Management. Enable nixmac there, then return here. macOS does not let nixmac verify this permission, so this recommended row may remain pending.",
         });
         await new Promise((resolve) => setTimeout(resolve, 1000));
-      } else if (permission.id === HELPER_PERMISSION_ID) {
-        // The backend records the decision and reconciles; it may open Login
-        // Items when approval is pending. Show this run's report only when it
-        // differs from the row's sentence — otherwise every click while
-        // approval is pending prints the same sentence twice.
-        const result = await tauriAPI.permissions.request(permission.id);
-        if (result.status !== "granted" && result.instructions !== permission.instructions) {
-          setNotice({
-            tone: "info",
-            message:
-              result.instructions ??
-              "nixmac could not finish enabling the unattended sync helper.",
-          });
-        }
       } else {
+        // Helper instructions come from the live permission row. Copying a
+        // request's result into a notice can outlive approval or recovery.
         // deprecated(orpc): replace with client/orpc from @/lib/orpc
         await tauriAPI.permissions.request(permission.id);
       }
@@ -165,10 +177,13 @@ export function PermissionsPanel() {
       await tauriAPI.permissions.refresh();
     } catch (error) {
       console.error("Failed to request permission:", error);
-      setNotice({
-        tone: "error",
-        message: `Permission request failed: ${error instanceof Error ? error.message : String(error)}`,
-      });
+      if (!isHelper || episode === helperEpisode.current) {
+        setNotice({
+          tone: "error",
+          message: `Permission request failed: ${error instanceof Error ? error.message : String(error)}`,
+          helper: isHelper,
+        });
+      }
     } finally {
       finishAction(permission.id);
     }
@@ -180,18 +195,49 @@ export function PermissionsPanel() {
    * approval — that row deep-links to Login Items instead.
    */
   async function handleDisableHelper() {
+    const episode = helperEpisode.current;
     startAction(HELPER_PERMISSION_ID, "disable");
     setNotice(null);
     try {
-      const report = await client.darwin.helperDisable();
-      setNotice({ tone: "info", message: report.detail });
+      await client.darwin.helperDisable();
       await client.permissions.refresh();
     } catch (error) {
       console.error("Failed to disable the unattended sync helper:", error);
-      setNotice({
-        tone: "error",
-        message: `Disabling the unattended sync helper failed: ${error instanceof Error ? error.message : String(error)}`,
+      if (episode === helperEpisode.current) {
+        setNotice({
+          tone: "error",
+          message: `Disabling the unattended sync helper failed: ${error instanceof Error ? error.message : String(error)}`,
+          helper: true,
+        });
+      }
+    } finally {
+      finishAction(HELPER_PERMISSION_ID);
+    }
+  }
+
+  /**
+   * Retry the stored Enable or Disable without recording a new decision. The
+   * row offers it only for those two decisions.
+   */
+  async function handleRetryHelper() {
+    const episode = helperEpisode.current;
+    startAction(HELPER_PERMISSION_ID, "retry");
+    setNotice(null);
+    try {
+      await client.darwin.helperRetry();
+      await client.permissions.refresh();
+    } catch (error) {
+      // Reporting the diagnostic also logs it, with its code and fix.
+      const diagnostic = diagnostics[DIAGNOSTIC_CODES.HELPER_RETRY_FAILED]({
+        detail: error instanceof Error ? error.message : String(error),
       });
+      if (episode === helperEpisode.current) {
+        setNotice({
+          tone: "error",
+          message: `${diagnostic.message} ${diagnostic.fix ?? ""}`.trim(),
+          helper: true,
+        });
+      }
     } finally {
       finishAction(HELPER_PERMISSION_ID);
     }
@@ -233,10 +279,12 @@ export function PermissionsPanel() {
           const isGranted = perm.status === "granted";
           const pendingAction = requesting.get(perm.id) ?? null;
           const isGranting = pendingAction === "grant";
+          const isRetrying = pendingAction === "retry";
           const isDisabling = pendingAction === "disable";
-          // The one action this row offers. The helper is the one permission
-          // nixmac installs rather than asks macOS for, so its row can hand it
-          // back — a toggle of the standing decision, not of the row's status.
+          // The helper is the one permission nixmac installs rather than asks
+          // macOS for, so its normal action toggles the standing decision, not
+          // the row's status. Retry repeats the stored decision, including a
+          // failed removal. An enabled helper also keeps Disable available.
           // While macOS holds the registration pending approval the backend
           // clears `canRequestProgrammatically` and the row deep-links to Login
           // Items instead. An action in flight keeps its own button: it has
@@ -245,12 +293,30 @@ export function PermissionsPanel() {
             perm.id === HELPER_PERMISSION_ID &&
             perm.canRequestProgrammatically &&
             (helperPreference === "granted" || isGranted);
-          // The helper's unknown status means registration could not be
-          // found. Retain the standing decision and its Disable action, but
-          // allow one explicit retry; observing this row never registers it.
-          const offersRetry = offersDisable && perm.status === "unknown";
+          const offersRetry =
+            perm.id === HELPER_PERMISSION_ID &&
+            (isRetrying ||
+              (pendingAction === null &&
+                perm.helperPhase === "failed" &&
+                (helperPreference === "granted" || helperPreference === "disabled")));
+          // A stored Disable that is still being carried out (in progress,
+          // waiting on an activation, or failed) offers no opt-in: Enable
+          // would record the opposite decision mid-removal. Enable returns
+          // once the removal settles at the disabled phase.
+          const removalUnfinished =
+            perm.id === HELPER_PERMISSION_ID &&
+            helperPreference === "disabled" &&
+            perm.helperPhase != null &&
+            perm.helperPhase !== "disabled";
           const action: "grant" | "disable" | null =
-            pendingAction ?? (offersDisable ? "disable" : isGranted ? null : "grant");
+            pendingAction === "retry"
+              ? null
+              : (pendingAction ??
+                (offersDisable
+                  ? "disable"
+                  : isGranted || perm.helperPhase === "needsUserAction" || removalUnfinished
+                    ? null
+                    : "grant"));
           // A fresh DOM node whenever the button changes shape: the
           // design-system Button animates a reused one, cross-fading fill and
           // width between shapes.
@@ -335,11 +401,12 @@ export function PermissionsPanel() {
                     Granted
                   </span>
                 ) : null}
-                {offersRetry && pendingAction === null ? (
+                {offersRetry ? (
                   <ActionButton
-                    {...grantLabel(perm)}
-                    isBusy={false}
-                    onClick={() => handleGrant(perm)}
+                    idle="Retry"
+                    busy="Retrying…"
+                    isBusy={isRetrying}
+                    onClick={() => void handleRetryHelper()}
                   />
                 ) : null}
                 {action === "disable" ? (

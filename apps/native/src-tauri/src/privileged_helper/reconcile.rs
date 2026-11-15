@@ -3,8 +3,9 @@
 // One idempotent function. Every run observes the world, drives it one step
 // closer to the stored decision, and forgets everything: no phase, no
 // progress, no recovery mode. A run starts over from fresh observation;
-// an absent registration needs an explicit Enable, including after a crash
-// between unregister and register, so an uncertain call is never replayed.
+// an absent registration needs an explicit Enable (a Grant, or a Retry under a
+// stored Grant), including after a crash between unregister and register, so
+// an uncertain call is never replayed by observation.
 // That is the whole
 // design — there is deliberately nothing here that coordinates, queues, or
 // remembers.
@@ -44,7 +45,9 @@ use crate::privileged_helper::service::{
 use crate::shared_types::{HelperDecision, HelperPreference};
 use crate::state::preferences;
 use crate::system::install_location::{self, InstallLocation};
+use std::cell::Cell;
 use std::fmt::Display;
+use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::{Mutex, PoisonError, TryLockError};
 use std::time::Duration;
 use tauri::{AppHandle, Runtime};
@@ -123,8 +126,9 @@ pub enum Reconciled {
     /// The actual bundled plist or executable failed validation.
     ServiceDefinitionBroken,
     /// The bundled definition is present, but ServiceManagement cannot find
-    /// the registration. An explicit Enable may attempt registration once;
-    /// observation must not turn this uncertainty into repeated mutations.
+    /// the registration. An explicit Enable (a Grant, or a Retry under a
+    /// stored Grant) may attempt registration once; observation must not turn
+    /// this uncertainty into repeated mutations.
     RegistrationUnavailable,
     /// Retryable: the run stopped short. Nothing further was mutated; a later
     /// run converges from what it observes then.
@@ -445,8 +449,12 @@ fn judge_gates(
 /// Reconciles the installed helper with this build. Idempotent, and its normal
 /// path is a single `Status` exchange, so running it at startup and on every
 /// status refresh is cheap.
-pub fn reconcile<E: Environment>(env: &E) -> Reconciled {
-    run(&RUNNING, env)
+///
+/// `record` is handed the report and its place among finished passes before
+/// the pass gives up the single-flight slot (see [`reported`]). It is not
+/// called for `Busy`. The other entry points take one for the same reason.
+pub fn reconcile<E: Environment>(env: &E, record: impl FnOnce(&Reconciled, u64)) -> Reconciled {
+    run_then(&RUNNING, env, record)
 }
 
 /// The explicit Grant action: record the decision, then reconcile under it.
@@ -454,15 +462,29 @@ pub fn reconcile<E: Environment>(env: &E) -> Reconciled {
 /// step, and the write is idempotent.
 ///
 /// Opening Login Items is the caller's action, never this function's.
-pub fn grant<E: Environment>(env: &E) -> Reconciled {
-    decide(&RUNNING, env, HelperDecision::Granted)
+pub fn grant<E: Environment>(env: &E, record: impl FnOnce(&Reconciled, u64)) -> Reconciled {
+    decide_then(&RUNNING, env, HelperDecision::Granted, record)
+}
+
+/// The explicit Retry action: carry out the decision already stored. A stored
+/// Enable retries as an explicit Enable, so a missing registration gets one new
+/// attempt; a stored Disable retries the removal. An undecided user is handled
+/// exactly like an observation, including [`goal`]'s adoption of a registration
+/// that already exists as the earlier opt-in; with nothing to adopt it registers
+/// nothing. Unlike an observation this waits for the single-flight slot, and
+/// unlike [`grant`] it never records an opt-in of its own or registers a
+/// missing helper for anyone who has not chosen Enable.
+///
+/// Opening System Settings is never this function's action, nor its caller's.
+pub fn retry<E: Environment>(env: &E, record: impl FnOnce(&Reconciled, u64)) -> Reconciled {
+    retry_then(&RUNNING, env, record)
 }
 
 /// The explicit Disable action: record the decision, then reconcile under it.
 /// The decision is written first, so a crash halfway resumes the removal
 /// rather than repairing the helper.
-pub fn disable<E: Environment>(env: &E) -> Reconciled {
-    decide(&RUNNING, env, HelperDecision::Disabled)
+pub fn disable<E: Environment>(env: &E, record: impl FnOnce(&Reconciled, u64)) -> Reconciled {
+    decide_then(&RUNNING, env, HelperDecision::Disabled, record)
 }
 
 /// Stores a decision and reconciles under it. The slot is a parameter so tests
@@ -472,14 +494,19 @@ pub fn disable<E: Environment>(env: &E) -> Reconciled {
 /// waits out an in-flight pass (bounded — see [`RUNNING`]) and then makes its
 /// own, so the pass that carries the decision out always exists and its
 /// report is what the click's caller renders.
-fn decide<E: Environment>(running: &Mutex<()>, env: &E, decision: HelperDecision) -> Reconciled {
+fn decide_then<E: Environment>(
+    running: &Mutex<()>,
+    env: &E,
+    decision: HelperDecision,
+    record: impl FnOnce(&Reconciled, u64),
+) -> Reconciled {
     // A copy that may not mutate a helper may not record a decision about one
     // either — the gates cover the write, not just the effects.
     if let Err(report) = env.gate() {
-        return reported(report);
+        return reported(report, record);
     }
     if let Err(detail) = env.store_decision(decision) {
-        return reported(preference_unwritable(detail));
+        return reported(preference_unwritable(detail), record);
     }
     // Nothing this slot guards is half-applied by a panic — it guards no
     // data — so a poisoned lock is taken rather than propagated.
@@ -488,25 +515,128 @@ fn decide<E: Environment>(running: &Mutex<()>, env: &E, decision: HelperDecision
         HelperDecision::Granted => Invocation::Enable,
         HelperDecision::Disabled => Invocation::Observe,
     };
-    reported(converge(env, invocation).unwrap_or_else(|report| report))
+    reported(
+        converge(env, invocation).unwrap_or_else(|report| report),
+        record,
+    )
 }
 
-fn run<E: Environment>(running: &Mutex<()>, env: &E) -> Reconciled {
+#[cfg(test)]
+fn decide<E: Environment>(running: &Mutex<()>, env: &E, decision: HelperDecision) -> Reconciled {
+    decide_then(running, env, decision, |_, _| {})
+}
+
+/// Retries under the stored decision. The slot is a parameter for the same
+/// reason as [`decide`]'s.
+///
+/// The decision is read after the slot is held, so a Grant or Disable that
+/// finished while this waited is the one retried. Only a stored Enable may
+/// register a missing helper, and [`commit_to_register`] re-reads the decision
+/// immediately before that register, so a Disable recorded in between still
+/// declines it. Any other decision runs the observation table unchanged.
+fn retry_then<E: Environment>(
+    running: &Mutex<()>,
+    env: &E,
+    record: impl FnOnce(&Reconciled, u64),
+) -> Reconciled {
+    // Nothing is written before the pass, so the pass's own first gate is the
+    // only one a retry needs. Poison handled as in [`decide`].
+    let _slot = running.lock().unwrap_or_else(PoisonError::into_inner);
+    let invocation = match env.preference() {
+        Ok(HelperPreference::Granted) => Invocation::Enable,
+        // Removal and an undecided user need no explicit invocation: the
+        // observation table already removes a disabled helper and never
+        // registers for an undecided one.
+        Ok(HelperPreference::Disabled | HelperPreference::Unset) => Invocation::Observe,
+        Err(detail) => return reported(preference_unreadable(detail), record),
+    };
+    reported(
+        converge(env, invocation).unwrap_or_else(|report| report),
+        record,
+    )
+}
+
+#[cfg(test)]
+fn retry_with<E: Environment>(running: &Mutex<()>, env: &E) -> Reconciled {
+    retry_then(running, env, |_, _| {})
+}
+
+fn run_then<E: Environment>(
+    running: &Mutex<()>,
+    env: &E,
+    record: impl FnOnce(&Reconciled, u64),
+) -> Reconciled {
     let _slot = match running.try_lock() {
         Ok(slot) => slot,
         // Poison handled as in [`decide`].
         Err(TryLockError::Poisoned(poisoned)) => poisoned.into_inner(),
         // Immediate, never a wait: observations are cheap to repeat and the
         // convergence loop repeats them on its own cadence.
-        Err(TryLockError::WouldBlock) => return reported(Reconciled::Busy),
+        Err(TryLockError::WouldBlock) => return reported(Reconciled::Busy, record),
     };
-    reported(converge(env, Invocation::Observe).unwrap_or_else(|report| report))
+    reported(
+        converge(env, Invocation::Observe).unwrap_or_else(|report| report),
+        record,
+    )
 }
 
-/// Logs one run's outcome and hands it back.
-fn reported(outcome: Reconciled) -> Reconciled {
+#[cfg(test)]
+fn run<E: Environment>(running: &Mutex<()>, env: &E) -> Reconciled {
+    run_then(running, env, |_, _| {})
+}
+
+/// Logs one run's outcome, stamps its place in the order of finished passes,
+/// hands the report and its stamp to `record`, and returns the report.
+///
+/// Every caller that holds the single-flight slot calls this before releasing
+/// it (the slot guard outlives the tail expression that calls this), so the
+/// stamps of two passes are in the order the passes observed the world. That
+/// order is what lets the permission surface refuse a report that finished
+/// before the one it already shows, whichever thread gets to publish first.
+/// A report produced without a pass (a refused gate, an unwritable decision)
+/// is stamped when it is made. `Busy` learned nothing: it gets no stamp and
+/// `record` is not called.
+///
+/// `record` runs under [`STAMPING`], in the same step as the stamp. Whatever
+/// it writes is therefore written in stamp order, for every report, with or
+/// without the slot: no later pass can be stamped, let alone recorded, until
+/// it returns. A caller that recorded after this function returned would be
+/// racing every other pass for that, since the slot is gone by then. `record`
+/// must be brief and must not reconcile: it runs with the slot held.
+fn reported(outcome: Reconciled, record: impl FnOnce(&Reconciled, u64)) -> Reconciled {
     log::info!("helper reconciliation: {outcome:?}");
+    let order = if matches!(outcome, Reconciled::Busy) {
+        None
+    } else {
+        let _stamping = STAMPING.lock().unwrap_or_else(PoisonError::into_inner);
+        let order = FINISHED_PASSES.fetch_add(1, Ordering::SeqCst) + 1;
+        record(&outcome, order);
+        Some(order)
+    };
+    LAST_PASS_ORDER.with(|last| last.set(order));
     outcome
+}
+
+/// Counts finished passes; see [`reported`].
+static FINISHED_PASSES: AtomicU64 = AtomicU64::new(0);
+
+/// Makes a stamp and the recording of its report one step; see [`reported`].
+/// It guards no data, so a poisoned lock is taken rather than propagated.
+static STAMPING: Mutex<()> = Mutex::new(());
+
+thread_local! {
+    /// The stamp of the pass this thread finished last, until it is taken.
+    /// A thread-local rather than part of the return value so the entry
+    /// points keep returning the bare report their many callers match on.
+    static LAST_PASS_ORDER: Cell<Option<u64>> = const { Cell::new(None) };
+}
+
+/// The place, among all finished passes, of the pass the calling thread just
+/// ran through [`reconcile`], [`grant`], [`retry`] or [`disable`]. `None` when
+/// that call answered `Busy`. Taking it clears it, so a stamp is never
+/// attributed to a later call.
+pub(crate) fn take_pass_order() -> Option<u64> {
+    LAST_PASS_ORDER.with(Cell::take)
 }
 
 /// What the stored decision asks for. The third stored value, "undecided", is
@@ -738,20 +868,24 @@ fn remove<E: Environment>(env: &E) -> Step {
 fn replace<E: Environment>(env: &E) -> Step {
     match env.replace_helper(&|| commit_to_register(env)) {
         Ok(()) => verify(env),
-        Err(failure) => Err(match failure {
+        Err(failure) => match failure {
             // The register step's own report, whatever it was: this pass
             // unregistered the old helper and deliberately registered
             // nothing in its place.
-            ReplaceFailure::RegisterDeclined(report) => report,
-            ReplaceFailure::UnregisterFailed(error) => unregister_failed(error),
-            ReplaceFailure::UnregisterSilent => unregister_failed("the unregister never reported"),
-            ReplaceFailure::RegisterFailed(error) => register_failed(error),
-            ReplaceFailure::RegisterSilent => register_failed("the register never reported"),
-            // Refused before anything was dispatched, so nothing changed.
-            ReplaceFailure::CalledOnMainThread => {
-                register_failed("a helper replacement cannot run on the main thread")
+            ReplaceFailure::RegisterDeclined(report) => Err(report),
+            ReplaceFailure::UnregisterFailed(error) => Err(unregister_failed(error)),
+            ReplaceFailure::UnregisterSilent => {
+                Err(unregister_failed("the unregister never reported"))
             }
-        }),
+            ReplaceFailure::RegisterFailed(error) => after_register_failure(env, error.to_string()),
+            ReplaceFailure::RegisterSilent => {
+                after_register_failure(env, "the register never reported".to_string())
+            }
+            // Refused before anything was dispatched, so nothing changed.
+            ReplaceFailure::CalledOnMainThread => Err(register_failed(
+                "a helper replacement cannot run on the main thread",
+            )),
+        },
     }
 }
 
@@ -759,14 +893,45 @@ fn register_fresh<E: Environment>(env: &E) -> Step {
     // The gates are inside the commitment, which is where every register's
     // immediately-before checks live.
     let committed = commit_to_register(env)?;
-    env.register(committed).map_err(|failure| match failure {
-        RegisterFailure::Failed(error) => register_failed(error),
-        RegisterFailure::Silent => register_failed("the register never reported"),
-        RegisterFailure::CalledOnMainThread => {
-            register_failed("a registration cannot run on the main thread")
+    match env.register(committed) {
+        Ok(()) => verify(env),
+        Err(RegisterFailure::Failed(error)) => after_register_failure(env, error.to_string()),
+        Err(RegisterFailure::Silent) => {
+            after_register_failure(env, "the register never reported".to_string())
         }
-    })?;
-    verify(env)
+        Err(RegisterFailure::CalledOnMainThread) => Err(register_failed(
+            "a registration cannot run on the main thread",
+        )),
+    }
+}
+
+/// A ServiceManagement register can report an error after macOS has already
+/// moved the service into a meaningful state. Judge that state from one fresh
+/// status read, without keying behavior to an unstable numeric error code and
+/// without a second register in this pass.
+///
+/// A registration that is still missing keeps the register's own error as a
+/// stop rather than becoming [`Reconciled::RegistrationUnavailable`]: the error
+/// is the only diagnostic this pass has. The next observation of the same
+/// missing registration reports `RegistrationUnavailable` and never replays it.
+fn after_register_failure<E: Environment>(env: &E, register_error: String) -> Step {
+    log::warn!("helper register reported an error: {register_error}");
+    match env.registration_status() {
+        Ok(RegistrationStatus::RequiresApproval) => Ok(Reconciled::PendingApproval),
+        Ok(RegistrationStatus::Enabled) => verify_listening(env).map_err(|report| match report {
+            Reconciled::Stopped(detail) => Reconciled::Stopped(format!(
+                "{register_error}; helper verification failed: {detail}"
+            )),
+            Reconciled::RegistrationUnavailable => register_failed(&register_error),
+            other => other,
+        }),
+        Ok(RegistrationStatus::NotRegistered | RegistrationStatus::NotFound) => {
+            Err(register_failed(register_error))
+        }
+        Err(status_error) => Err(register_failed(format!(
+            "{register_error}; the resulting registration status could not be read: {status_error}"
+        ))),
+    }
 }
 
 /// The register step's immediately-before checks, and the only mint of the
@@ -1159,6 +1324,21 @@ mod tests {
         match report {
             Reconciled::Stopped(text) => text.clone(),
             other => panic!("expected a stopped report, got {other:?}"),
+        }
+    }
+
+    /// The pass an explicit Retry runs under the default stored Enable: what a
+    /// first registration, and every register-error judgment below, run under
+    /// since observation never registers a missing helper.
+    fn retried(world: &World) -> Reconciled {
+        retry_with(&Mutex::new(()), world)
+    }
+
+    fn register_refusal() -> service::ServiceCallError {
+        service::ServiceCallError {
+            domain: "SMAppServiceErrorDomain".to_string(),
+            code: 1,
+            localized: "operation not permitted".to_string(),
         }
     }
 
@@ -1587,6 +1767,259 @@ mod tests {
     // ── refusals and failures that end a pass ──────────────────────────────
 
     #[test]
+    fn a_fresh_register_error_is_judged_from_one_authoritative_status_read() {
+        for (resulting_status, expected) in [
+            (
+                Ok(RegistrationStatus::RequiresApproval),
+                Reconciled::PendingApproval,
+            ),
+            (
+                Ok(RegistrationStatus::NotFound),
+                register_failed(register_refusal()),
+            ),
+        ] {
+            let world = World {
+                status: RefCell::new(vec![
+                    Ok(RegistrationStatus::NotRegistered),
+                    resulting_status,
+                ]),
+                register: RefCell::new(Some(RegisterFailure::Failed(register_refusal()))),
+                ..World::default()
+            };
+
+            assert_eq!(retried(&world), expected);
+            assert_eq!(world.acts(), vec![Act::Registered]);
+        }
+
+        let world = World {
+            status: RefCell::new(vec![
+                Ok(RegistrationStatus::NotRegistered),
+                Ok(RegistrationStatus::Enabled),
+            ]),
+            register: RefCell::new(Some(RegisterFailure::Failed(register_refusal()))),
+            exchanges: RefCell::new(vec![Peer::Answered(this_build_idle())]),
+            ..World::default()
+        };
+        assert_eq!(retried(&world), Reconciled::AtThisBuild);
+        assert_eq!(world.acts(), vec![Act::Registered]);
+    }
+
+    #[test]
+    fn a_fresh_register_error_keeps_its_diagnostics_and_is_not_replayed() {
+        for resulting_status in [
+            Ok(RegistrationStatus::NotRegistered),
+            Err("status unavailable".to_string()),
+        ] {
+            let status_was_unavailable = resulting_status.is_err();
+            let world = World {
+                status: RefCell::new(vec![
+                    Ok(RegistrationStatus::NotRegistered),
+                    resulting_status,
+                ]),
+                register: RefCell::new(Some(RegisterFailure::Failed(register_refusal()))),
+                ..World::default()
+            };
+
+            let detail = stopped_text(&retried(&world));
+            assert!(detail.contains("SMAppServiceErrorDomain 1"));
+            if status_was_unavailable {
+                assert!(detail.contains("status unavailable"));
+                assert!(detail.contains("resulting registration status could not be read"));
+            } else {
+                // The next observation sees the same missing registration
+                // and reports it without a second register.
+                assert_eq!(fresh_run(&world), Reconciled::RegistrationUnavailable);
+            }
+            assert_eq!(world.acts(), vec![Act::Registered]);
+        }
+    }
+
+    #[test]
+    fn register_errors_survive_failed_verification_for_fresh_and_replacement_helpers() {
+        for (peers, verification_detail) in [
+            (
+                vec![Peer::RootUnverifiable],
+                "the helper socket is held by something unidentified: ad-hoc signature".to_string(),
+            ),
+            (
+                vec![Peer::Answered(status_reply(
+                    OTHER_BUILD,
+                    HelperStateName::Idle,
+                    None,
+                ))],
+                format!("the registered helper reports build {OTHER_BUILD}, not this build"),
+            ),
+            (
+                vec![Peer::Unreachable; VERIFY_LISTEN_ATTEMPTS as usize],
+                "the registered helper never answered on its socket".to_string(),
+            ),
+        ] {
+            for replacing in [false, true] {
+                let mut exchanges = Vec::new();
+                if replacing {
+                    exchanges.push(Peer::Answered(status_reply(
+                        OTHER_BUILD,
+                        HelperStateName::Idle,
+                        None,
+                    )));
+                }
+                exchanges.extend(peers.clone());
+                let world = World {
+                    status: RefCell::new(vec![
+                        Ok(if replacing {
+                            RegistrationStatus::Enabled
+                        } else {
+                            RegistrationStatus::NotRegistered
+                        }),
+                        Ok(RegistrationStatus::Enabled),
+                    ]),
+                    register: RefCell::new(
+                        (!replacing).then(|| RegisterFailure::Failed(register_refusal())),
+                    ),
+                    replace: RefCell::new(
+                        replacing.then(|| ReplaceFailure::RegisterFailed(register_refusal())),
+                    ),
+                    exchanges: RefCell::new(exchanges),
+                    ..World::default()
+                };
+
+                // A replacement is the observation table's own repair; a
+                // missing helper is registered only by an explicit Enable.
+                let report = if replacing {
+                    fresh_run(&world)
+                } else {
+                    retried(&world)
+                };
+                assert_eq!(
+                    stopped_text(&report),
+                    format!(
+                        "{}; helper verification failed: {verification_detail}",
+                        register_refusal()
+                    )
+                );
+                assert_eq!(
+                    world.acts(),
+                    vec![if replacing {
+                        Act::Replaced
+                    } else {
+                        Act::Registered
+                    }]
+                );
+                assert_eq!(*world.preference.borrow(), Ok(HelperPreference::Granted));
+            }
+        }
+    }
+
+    #[test]
+    fn register_error_does_not_change_approval_discovered_during_verification() {
+        let world = World {
+            status: RefCell::new(vec![
+                Ok(RegistrationStatus::NotRegistered),
+                Ok(RegistrationStatus::Enabled),
+                Ok(RegistrationStatus::RequiresApproval),
+            ]),
+            register: RefCell::new(Some(RegisterFailure::Failed(register_refusal()))),
+            exchanges: RefCell::new(vec![Peer::Unreachable; VERIFY_LISTEN_ATTEMPTS as usize]),
+            ..World::default()
+        };
+
+        assert_eq!(retried(&world), Reconciled::PendingApproval);
+        assert_eq!(world.acts(), vec![Act::Registered]);
+    }
+
+    #[test]
+    fn register_error_keeps_its_detail_when_the_registration_vanishes_during_verification() {
+        for vanished in [
+            RegistrationStatus::NotFound,
+            RegistrationStatus::NotRegistered,
+        ] {
+            let world = World {
+                status: RefCell::new(vec![
+                    Ok(RegistrationStatus::NotRegistered),
+                    Ok(RegistrationStatus::Enabled),
+                    Ok(vanished),
+                ]),
+                register: RefCell::new(Some(RegisterFailure::Failed(register_refusal()))),
+                exchanges: RefCell::new(vec![Peer::Unreachable; VERIFY_LISTEN_ATTEMPTS as usize]),
+                ..World::default()
+            };
+
+            assert_eq!(retried(&world), register_failed(register_refusal()));
+            assert_eq!(fresh_run(&world), Reconciled::RegistrationUnavailable);
+            assert_eq!(world.acts(), vec![Act::Registered]);
+        }
+    }
+
+    #[test]
+    fn a_silent_fresh_register_uses_the_same_status_judgment() {
+        let world = World {
+            status: RefCell::new(vec![
+                Ok(RegistrationStatus::NotRegistered),
+                Ok(RegistrationStatus::RequiresApproval),
+            ]),
+            register: RefCell::new(Some(RegisterFailure::Silent)),
+            ..World::default()
+        };
+
+        assert_eq!(retried(&world), Reconciled::PendingApproval);
+        assert_eq!(world.acts(), vec![Act::Registered]);
+    }
+
+    #[test]
+    fn first_time_grant_surfaces_approval_even_when_register_reports_an_error() {
+        let world = World {
+            status: RefCell::new(vec![
+                Ok(RegistrationStatus::NotRegistered),
+                Ok(RegistrationStatus::RequiresApproval),
+            ]),
+            preference: RefCell::new(Ok(HelperPreference::Unset)),
+            register: RefCell::new(Some(RegisterFailure::Failed(register_refusal()))),
+            ..World::default()
+        };
+
+        assert_eq!(
+            decide(&Mutex::new(()), &world, HelperDecision::Granted),
+            Reconciled::PendingApproval
+        );
+        assert_eq!(world.acts(), vec![Act::StoredGranted, Act::Registered]);
+    }
+
+    #[test]
+    fn a_replacement_register_error_uses_the_same_status_judgment() {
+        let world = World {
+            status: RefCell::new(vec![
+                Ok(RegistrationStatus::Enabled),
+                Ok(RegistrationStatus::RequiresApproval),
+            ]),
+            exchanges: RefCell::new(vec![Peer::Answered(status_reply(
+                OTHER_BUILD,
+                HelperStateName::Idle,
+                None,
+            ))]),
+            replace: RefCell::new(Some(ReplaceFailure::RegisterFailed(register_refusal()))),
+            ..World::default()
+        };
+
+        assert_eq!(fresh_run(&world), Reconciled::PendingApproval);
+        assert_eq!(world.acts(), vec![Act::Replaced]);
+
+        let world = World {
+            status: RefCell::new(vec![
+                Ok(RegistrationStatus::Enabled),
+                Ok(RegistrationStatus::Enabled),
+            ]),
+            exchanges: RefCell::new(vec![
+                Peer::Answered(status_reply(OTHER_BUILD, HelperStateName::Idle, None)),
+                Peer::Answered(this_build_idle()),
+            ]),
+            replace: RefCell::new(Some(ReplaceFailure::RegisterSilent)),
+            ..World::default()
+        };
+        assert_eq!(fresh_run(&world), Reconciled::AtThisBuild);
+        assert_eq!(world.acts(), vec![Act::Replaced]);
+    }
+
+    #[test]
     fn a_reply_that_is_not_a_status_is_a_refusal() {
         let world = World::answering(HelperReply::RequestNotUnderstood);
 
@@ -1616,6 +2049,87 @@ mod tests {
         assert_eq!(
             stopped_text(&fresh_run(&world)),
             "the helper registration could not be read: no service"
+        );
+    }
+
+    #[test]
+    fn a_report_is_recorded_before_its_pass_gives_up_the_slot() {
+        // What keeps reports in pass order wherever they are recorded: the
+        // recording happens with the slot still held, so no later pass can
+        // even begin first. An observation tried from inside the recording
+        // finds the slot taken.
+        let slot = Mutex::new(());
+        let recorded = RefCell::new(Vec::new());
+        let world = World::answering(this_build_idle());
+        let during = RefCell::new(None);
+        let report = run_then(&slot, &world, |report, order| {
+            recorded.borrow_mut().push((report.clone(), order));
+            *during.borrow_mut() = Some(run(&slot, &World::answering(this_build_idle())));
+        });
+        assert_eq!(report, Reconciled::AtThisBuild);
+        assert_eq!(during.into_inner(), Some(Reconciled::Busy));
+        let recorded = recorded.into_inner();
+        assert_eq!(recorded.len(), 1);
+        assert_eq!(recorded[0].0, Reconciled::AtThisBuild);
+        // The stamp handed to the recording is the one the caller takes.
+        assert_eq!(take_pass_order(), Some(recorded[0].1));
+    }
+
+    #[test]
+    fn busy_is_not_recorded_and_every_other_report_is_recorded_once() {
+        let slot = Mutex::new(());
+        let held = slot.lock().unwrap();
+        let calls = std::cell::Cell::new(0);
+        let busy = run_then(&slot, &World::default(), |_, _| calls.set(calls.get() + 1));
+        assert_eq!(busy, Reconciled::Busy);
+        assert_eq!(calls.get(), 0);
+        assert_eq!(take_pass_order(), None);
+        drop(held);
+
+        // A decision refused at the gate never reaches the slot, and is
+        // recorded all the same.
+        let refused = Reconciled::Displaced("not in /Applications".to_string());
+        let gated = World::default().with_gates(vec![Err(refused.clone())]);
+        let seen = RefCell::new(Vec::new());
+        let report = decide_then(&slot, &gated, HelperDecision::Granted, |report, _| {
+            seen.borrow_mut().push(report.clone());
+        });
+        assert_eq!(report, refused);
+        assert_eq!(seen.into_inner(), vec![refused]);
+
+        let seen = RefCell::new(Vec::new());
+        let world = World::answering(this_build_idle());
+        let report = retry_then(&slot, &world, |report, _| {
+            seen.borrow_mut().push(report.clone());
+        });
+        assert_eq!(seen.into_inner(), vec![report]);
+    }
+
+    #[test]
+    fn reports_from_racing_passes_are_recorded_in_stamp_order() {
+        // Actions wait for the slot, so every thread's pass runs. Each records
+        // its stamp into one shared list from inside the pass. Recording after
+        // the pass returned, as the callers once did, lets a later pass append
+        // first; recording in the same step as the stamp cannot.
+        let slot = Mutex::new(());
+        let recorded = Mutex::new(Vec::new());
+        std::thread::scope(|scope| {
+            for _ in 0..8 {
+                scope.spawn(|| {
+                    for _ in 0..200 {
+                        let world = World::answering(this_build_idle());
+                        retry_then(&slot, &world, |_, order| {
+                            recorded.lock().unwrap().push(order);
+                        });
+                    }
+                });
+            }
+        });
+        let recorded = recorded.into_inner().unwrap();
+        assert_eq!(recorded.len(), 1600);
+        assert!(
+            recorded.windows(2).all(|pair| pair[0] < pair[1]),
+            "a later pass was recorded before an earlier one"
         );
     }
 
@@ -1810,6 +2324,173 @@ mod tests {
             // the registration it was stored for.
             assert_eq!(report, Reconciled::AtThisBuild);
             assert_eq!(acts, vec![Act::StoredGranted, Act::Registered]);
+        });
+    }
+
+    // ── explicit retry ─────────────────────────────────────────────────────
+
+    #[test]
+    fn retry_registers_a_missing_helper_only_under_a_stored_enable() {
+        for missing in [
+            RegistrationStatus::NotRegistered,
+            RegistrationStatus::NotFound,
+        ] {
+            let world = World {
+                status: RefCell::new(vec![Ok(missing), Ok(RegistrationStatus::Enabled)]),
+                exchanges: RefCell::new(vec![Peer::Answered(this_build_idle())]),
+                ..World::default()
+            };
+            assert_eq!(retried(&world), Reconciled::AtThisBuild);
+            assert_eq!(
+                world.acts(),
+                vec![Act::Registered],
+                "a retry records no decision"
+            );
+            assert_eq!(world.preference(), Ok(HelperPreference::Granted));
+        }
+    }
+
+    #[test]
+    fn retry_never_installs_for_an_undecided_or_disabled_user() {
+        for preference in [HelperPreference::Unset, HelperPreference::Disabled] {
+            for missing in [
+                RegistrationStatus::NotRegistered,
+                RegistrationStatus::NotFound,
+            ] {
+                let world = World {
+                    preference: RefCell::new(Ok(preference)),
+                    status: RefCell::new(vec![Ok(missing)]),
+                    ..World::default()
+                };
+                assert_eq!(retried(&world), Reconciled::NoHelper);
+                assert!(world.acts().is_empty());
+                assert_eq!(world.preference(), Ok(preference));
+            }
+        }
+    }
+
+    #[test]
+    fn an_undecided_retry_behaves_exactly_like_an_observation_including_adoption() {
+        // An existing registration is the user's earlier opt-in on every
+        // path that resolves an undecided user, Retry included.
+        for existing in [
+            RegistrationStatus::RequiresApproval,
+            RegistrationStatus::Enabled,
+        ] {
+            let observed = World {
+                preference: RefCell::new(Ok(HelperPreference::Unset)),
+                status: RefCell::new(vec![Ok(existing)]),
+                exchanges: RefCell::new(vec![Peer::Answered(this_build_idle())]),
+                ..World::default()
+            };
+            let retried_world = World {
+                preference: RefCell::new(Ok(HelperPreference::Unset)),
+                status: RefCell::new(vec![Ok(existing)]),
+                exchanges: RefCell::new(vec![Peer::Answered(this_build_idle())]),
+                ..World::default()
+            };
+            assert_eq!(retried(&retried_world), fresh_run(&observed));
+            assert_eq!(retried_world.acts(), observed.acts());
+            assert_eq!(retried_world.acts().first(), Some(&Act::StoredGranted));
+        }
+    }
+
+    #[test]
+    fn retry_carries_out_a_stored_disable_without_rewriting_it() {
+        let world = World {
+            preference: RefCell::new(Ok(HelperPreference::Disabled)),
+            status: RefCell::new(vec![Ok(RegistrationStatus::RequiresApproval)]),
+            ..World::default()
+        };
+        assert_eq!(retried(&world), Reconciled::Removed);
+        assert_eq!(world.acts(), vec![Act::Unregistered]);
+        assert_eq!(world.preference(), Ok(HelperPreference::Disabled));
+
+        let world = World {
+            preference: RefCell::new(Ok(HelperPreference::Disabled)),
+            ..World::answering(this_build_idle())
+        };
+        assert_eq!(retried(&world), Reconciled::Removed);
+        assert_eq!(world.acts(), vec![Act::Unregistered]);
+        assert_eq!(world.preference(), Ok(HelperPreference::Disabled));
+    }
+
+    #[test]
+    fn a_failed_first_registration_waits_for_retry_and_is_never_replayed_by_observation() {
+        let world = World {
+            status: RefCell::new(vec![
+                Ok(RegistrationStatus::NotFound),
+                Ok(RegistrationStatus::NotRegistered),
+                Ok(RegistrationStatus::NotRegistered),
+                Ok(RegistrationStatus::NotRegistered),
+                Ok(RegistrationStatus::Enabled),
+            ]),
+            register: RefCell::new(Some(RegisterFailure::Failed(register_refusal()))),
+            exchanges: RefCell::new(vec![Peer::Answered(this_build_idle())]),
+            ..World::default()
+        };
+
+        let enabled = decide(&Mutex::new(()), &world, HelperDecision::Granted);
+        assert!(stopped_text(&enabled).contains("SMAppServiceErrorDomain 1"));
+        assert_eq!(world.acts(), vec![Act::StoredGranted, Act::Registered]);
+
+        assert_eq!(fresh_run(&world), Reconciled::RegistrationUnavailable);
+        assert_eq!(
+            world.acts(),
+            vec![Act::StoredGranted, Act::Registered],
+            "observation must not register"
+        );
+
+        assert_eq!(retried(&world), Reconciled::AtThisBuild);
+        assert_eq!(
+            world.acts(),
+            vec![Act::StoredGranted, Act::Registered, Act::Registered]
+        );
+    }
+
+    #[test]
+    fn retry_is_gated_and_reports_an_unreadable_decision_without_acting() {
+        let world = World::default()
+            .with_gates(vec![Err(Reconciled::Displaced("app replaced".to_string()))]);
+        assert_eq!(
+            retried(&world),
+            Reconciled::Displaced("app replaced".to_string())
+        );
+        assert!(world.acts().is_empty());
+
+        let world = World {
+            preference: RefCell::new(Err("preferences locked".to_string())),
+            status: RefCell::new(vec![Ok(RegistrationStatus::NotRegistered)]),
+            ..World::default()
+        };
+        assert!(stopped_text(&retried(&world)).contains("could not be read"));
+        assert!(world.acts().is_empty());
+    }
+
+    #[test]
+    fn retry_waits_for_a_real_pass_without_rewriting_the_decision() {
+        let running = Mutex::new(());
+        let held = running.lock().expect("a fresh lock");
+        std::thread::scope(|scope| {
+            let retried = scope.spawn(|| {
+                let world = World {
+                    status: RefCell::new(vec![
+                        Ok(RegistrationStatus::NotRegistered),
+                        Ok(RegistrationStatus::Enabled),
+                    ]),
+                    exchanges: RefCell::new(vec![Peer::Answered(this_build_idle())]),
+                    ..World::default()
+                };
+                let report = retry_with(&running, &world);
+                (report, world.acts())
+            });
+            std::thread::sleep(Duration::from_millis(100));
+            assert!(!retried.is_finished(), "retry did not wait for the slot");
+            drop(held);
+
+            let (report, acts) = retried.join().expect("retry");
+            assert_eq!(report, Reconciled::AtThisBuild);
+            assert_eq!(acts, vec![Act::Registered]);
         });
     }
 }

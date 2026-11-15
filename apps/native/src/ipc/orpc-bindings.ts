@@ -1208,6 +1208,16 @@ autoFormatNixFiles: boolean;
 helperPreference: HelperPreference }
 
 /**
+ * Product-facing state of the unattended sync helper.
+ * 
+ * The helper is represented in the permissions list, but its lifecycle has
+ * more states than a normal permission grant. Keeping those states typed lets
+ * every UI surface use the same copy and actions without parsing diagnostic
+ * text or overloading [`PermissionStatus`].
+ */
+export type HelperPermissionPhase = "ready" | "approvalRequired" | "reconciling" | "waitingForActivation" | "needsUserAction" | "failed" | "disabled"
+
+/**
  * The user's standing decision about the privileged helper.
  * 
  * Tri-state on purpose. `Unset` means the user never decided — a fresh install,
@@ -1223,7 +1233,7 @@ export type HelperPreference = "unset" | "granted" | "disabled"
  * whether the helper is installed and answering at this build, and the sentence
  * that says what else is true.
  */
-export type HelperReport = { atThisBuild: boolean; detail: string }
+export type HelperReport = { atThisBuild: boolean; phase: HelperPermissionPhase; detail: string }
 
 /**
  * A commit entry combining git log data, tag-derived flags, optional DB metadata, and raw diff changes.
@@ -1619,7 +1629,11 @@ status: PermissionStatus;
 /**
  * Manual instructions for permissions that cannot be requested programmatically.
  */
-instructions?: string | null }
+instructions?: string | null; 
+/**
+ * Helper-specific lifecycle state. Absent for normal permission rows.
+ */
+helperPhase?: HelperPermissionPhase | null }
 
 /**
  * Permission status.
@@ -2065,6 +2079,7 @@ export type Procedures = {
     fixWithAi: Client<Record<never, never>, FixWithAiInput, void, Error>
     helperDisable: Client<Record<never, never>, void, HelperReport, Error>
     helperGrant: Client<Record<never, never>, void, HelperReport, Error>
+    helperRetry: Client<Record<never, never>, void, HelperReport, Error>
     helperStatus: Client<Record<never, never>, void, HelperReport, Error>
     prepareRestore: Client<Record<never, never>, RestoreTargetInput, void, Error>
     rebuildStatus: Client<Record<never, never>, void, RebuildStatus, Error>

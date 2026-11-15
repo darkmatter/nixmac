@@ -57,7 +57,7 @@ nonsecret provider choice. Through the actual GUI:
 
 1. Open **Go to Permissions**, or inspect the current Permissions step. Require
    **Unattended sync helper** to report **The unattended sync helper is installed
-   and answering.** If that row offers **Enable** or **Retry Enable**, try one of those
+   and answering.** If that row offers **Enable** or **Retry**, try one of those
    actions at most once in total and wait for the real status. A helper error,
    pending approval, **Open Settings**, or system
    authorization prompt is a prerequisite blocker: report it before **Run
