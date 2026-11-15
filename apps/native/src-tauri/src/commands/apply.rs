@@ -7,25 +7,38 @@ use tauri::AppHandle;
 pub async fn check_etc_clobber(
     app: AppHandle,
 ) -> Result<shared_types::EtcClobberCheckResult, String> {
+    crate::attention::clear_work(&app);
     let (host_attr, config_dir) = get_hostname_and_config_dir(&app, "darwin_check_etc_clobber")?;
-    crate::system::etc_preflight::check_etc_clobber(&config_dir, &host_attr)
-        .map_err(|e| capture_err("darwin_check_etc_clobber", e))
+    let result = crate::system::etc_preflight::check_etc_clobber(&config_dir, &host_attr)
+        .map_err(|e| capture_err("darwin_check_etc_clobber", e))?;
+    if !result.ok {
+        crate::attention::build_blocked(&app);
+    }
+    Ok(result)
 }
 
 pub async fn check_app_management(
     app: AppHandle,
 ) -> Result<shared_types::AppManagementCheckResult, String> {
+    crate::attention::clear_work(&app);
     let (host_attr, config_dir) = get_hostname_and_config_dir(&app, "darwin_check_app_management")?;
-    crate::system::app_management_preflight::check_app_management(&config_dir, &host_attr)
-        .map_err(|e| capture_err("darwin_check_app_management", e))
+    let result =
+        crate::system::app_management_preflight::check_app_management(&config_dir, &host_attr)
+            .map_err(|e| capture_err("darwin_check_app_management", e))?;
+    if !result.ok {
+        crate::attention::build_blocked(&app);
+    }
+    Ok(result)
 }
 
 pub async fn start_apply_stream(
     app: AppHandle,
     host_override: Option<String>,
 ) -> Result<shared_types::OkResult, String> {
-    let dir = store::ensure_config_dir_exists(&app)
-        .map_err(|e| capture_err("darwin_apply_stream_start", e))?;
+    let dir = store::ensure_config_dir_exists(&app).map_err(|error| {
+        crate::attention::build_blocked(&app);
+        capture_err("darwin_apply_stream_start", error)
+    })?;
 
     let stored_attr = nix::determine_host_attr(&app);
     let discovered_hosts = nix::list_darwin_hosts(&dir).ok();
@@ -45,11 +58,14 @@ pub async fn start_apply_stream(
             (hosts.len() == 1).then(|| hosts[0].clone())
         })
         .ok_or_else(|| {
+            crate::attention::build_blocked(&app);
             "Host attribute not found. Set a host in Settings or ensure your flake defines exactly one darwinConfiguration.".to_string()
         })?;
 
-    rebuild::apply_stream(&app, &dir, &host)
-        .map_err(|e| capture_err("darwin_apply_stream_start", e))?;
+    rebuild::apply_stream(&app, &dir, &host).map_err(|error| {
+        crate::attention::build_blocked(&app);
+        capture_err("darwin_apply_stream_start", error)
+    })?;
     Ok(shared_types::OkResult::yes())
 }
 
@@ -63,9 +79,11 @@ pub async fn activate_store_path(
 }
 
 pub async fn run_finalize_apply(app: AppHandle) -> Result<(), String> {
-    crate::rebuild::finalize_apply(&app)
-        .await
-        .map_err(|e| capture_err("finalize_apply", e))
+    if let Err(error) = crate::rebuild::finalize_apply(&app).await {
+        crate::attention::build_finalization_failed(&app);
+        return Err(capture_err("finalize_apply", error));
+    }
+    Ok(())
 }
 
 pub async fn run_finalize_rollback(
@@ -73,9 +91,11 @@ pub async fn run_finalize_rollback(
     store_path: Option<String>,
     changeset_id: Option<i64>,
 ) -> Result<(), String> {
-    crate::rebuild::finalize_rollback(&app, store_path, changeset_id)
-        .await
-        .map_err(|e| capture_err("finalize_rollback", e))
+    if let Err(error) = crate::rebuild::finalize_rollback(&app, store_path, changeset_id).await {
+        crate::attention::restore_finalization_failed(&app);
+        return Err(capture_err("finalize_rollback", error));
+    }
+    Ok(())
 }
 
 pub async fn fetch_rebuild_status(app: AppHandle) -> Result<shared_types::RebuildStatus, String> {

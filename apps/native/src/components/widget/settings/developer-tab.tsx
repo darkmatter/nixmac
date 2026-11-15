@@ -243,15 +243,19 @@ export function DeveloperTab() {
         </div>
         <div className="space-y-3">
           <p className="text-xs text-muted-foreground">
-            Override PostHog feature flag variants locally for testing. "PostHog
-            default" uses the server-side value; choosing a variant forces it
-            even when diagnostics are disabled.
+            Override feature flag variants locally for testing. "PostHog default"
+            uses the server-side value for PostHog-backed flags; local-only flags
+            name their app default. Choosing a variant stores a local override even
+            when diagnostics are disabled.
           </p>
           {OVERRIDABLE_FLAGS.map((flag) => {
             const active = featureFlagOverrides?.[flag.key] ?? null;
             return (
               <div key={flag.key} className="space-y-1.5">
                 <Label className="text-xs font-mono">{flag.label ?? flag.key}</Label>
+                {flag.description ? (
+                  <p className="text-muted-foreground text-xs">{flag.description}</p>
+                ) : null}
                 <div className="flex flex-wrap gap-2">
                   <Button
                     type="button"
@@ -259,7 +263,7 @@ export function DeveloperTab() {
                     variant={active === null ? "default" : "outline"}
                     onClick={() => handleSetFlagOverride(flag.key, null)}
                   >
-                    PostHog default
+                    {flag.defaultLabel ?? "PostHog default"}
                   </Button>
                   {flag.options.map((option) => (
                     <Button

@@ -368,11 +368,45 @@ fn app_management_error_payload(
 ///
 /// Emits the terminal `darwin:apply:end` event and records the outcome in
 /// the rebuild-status cell (which emits `rebuild_status_changed`).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum ApplyEndAttention {
+    Silent,
+    BuildBlocked,
+    BuildFailed,
+}
+
+fn apply_end_attention(payload: &serde_json::Value) -> ApplyEndAttention {
+    if payload.get("ok").and_then(|value| value.as_bool()) != Some(false) {
+        return ApplyEndAttention::Silent;
+    }
+    match payload.get("error_type").and_then(|value| value.as_str()) {
+        // The user cancelled the macOS prompt themselves, so there is nothing
+        // new to tell them while nixmac is hidden.
+        Some("user_cancelled") => ApplyEndAttention::Silent,
+        // A blocker the user can resolve (another activation running, files in
+        // /etc to rename, the App Management permission, administrator
+        // credentials), not a failed build. `authorization_denied` stays
+        // visible: its classifier also matches broad text such as "not
+        // permitted", so silence could hide an activation the user never
+        // declined.
+        Some("activation_refused" | "etc_clobber" | "app_management" | "authorization_denied") => {
+            ApplyEndAttention::BuildBlocked
+        }
+        _ => ApplyEndAttention::BuildFailed,
+    }
+}
+
 fn emit_apply_end(app: &AppHandle, payload: serde_json::Value) {
+    let attention = apply_end_attention(&payload);
     crate::state::rebuild_status::record_end(app, &payload);
     // fire-and-forget: emit returns Err only when no listeners are registered
     // (window may be hidden/destroyed). Missing this event is non-fatal.
     let _ = app.emit("darwin:apply:end", payload);
+    match attention {
+        ApplyEndAttention::Silent => {}
+        ApplyEndAttention::BuildBlocked => crate::attention::build_blocked(app),
+        ApplyEndAttention::BuildFailed => crate::attention::build_failed(app),
+    }
 }
 
 pub fn apply_stream(
@@ -721,6 +755,9 @@ pub fn activate_store_path_stream(
             serde_json::json!({"chunk": "Activating previous nix store...\n"}),
         );
 
+        if crate::main_window::active(&app_handle).is_popover() {
+            crate::state::rebuild_status::expect_owned_store_path_change(store_path.clone());
+        }
         match activate_store_path(&app_handle, &store_path) {
             Ok(result) => {
                 for line in result.stdout.lines() {
@@ -736,7 +773,11 @@ pub fn activate_store_path_stream(
                     info!("[darwin] store path activation succeeded");
                     emit_apply_end(
                         &app_handle,
-                        serde_json::json!({"ok": true, "code": result.code}),
+                        serde_json::json!({
+                            "ok": true,
+                            "code": result.code,
+                            "store_path": store_path,
+                        }),
                     );
                 } else {
                     let (error_type, error) = classify_activate_error(&result);
@@ -1216,6 +1257,11 @@ fn run_darwin_rebuild(
         }));
     };
 
+    if crate::main_window::active(app).is_popover() {
+        crate::state::rebuild_status::expect_owned_store_path_change(
+            system_store_path.to_string_lossy().to_string(),
+        );
+    }
     let activate_result = run_activate_step(app, system_store_path).map_err(|e| {
         serde_json::json!({
             "ok": false,
@@ -1359,6 +1405,7 @@ fn run_darwin_rebuild(
         "ok": true,
         "code": activate_result.code,
         "log_file": log_path.to_string_lossy(),
+        "store_path": system_store_path.to_string_lossy(),
     });
     if let Some(et) = error_type
         && let Some(obj) = success_payload.as_object_mut()
@@ -1374,7 +1421,9 @@ fn run_darwin_rebuild(
 #[cfg(test)]
 mod activation_safety_tests {
     use super::{
-        ActivateResult, activation_failure_left_system_untouched, classify_activate_error,
+        ActivateResult, ApplyEndAttention, activation_failure_left_system_untouched,
+        app_management_error_payload, apply_end_attention, classify_activate_error,
+        etc_clobber_error_payload, handle_activation_error,
     };
 
     fn failed_activation(stdout: &str, stderr: &str) -> ActivateResult {
@@ -1454,5 +1503,99 @@ mod activation_safety_tests {
             "authorization_denied"
         ));
         assert!(!activation_failure_left_system_untouched("generic_error"));
+    }
+
+    fn attention_for(error_type: &str) -> ApplyEndAttention {
+        apply_end_attention(&serde_json::json!({
+            "ok": false,
+            "error_type": error_type,
+        }))
+    }
+
+    #[test]
+    fn apply_end_attention_is_silent_for_success_and_user_cancellation() {
+        assert_eq!(
+            apply_end_attention(&serde_json::json!({ "ok": true })),
+            ApplyEndAttention::Silent
+        );
+        assert_eq!(
+            attention_for("user_cancelled"),
+            ApplyEndAttention::Silent,
+            "user_cancelled is the user's own answer to a macOS prompt"
+        );
+    }
+
+    #[test]
+    fn apply_end_attention_reports_user_actionable_blockers_as_blocked() {
+        for error_type in [
+            "activation_refused",
+            "etc_clobber",
+            "app_management",
+            "authorization_denied",
+        ] {
+            assert_eq!(
+                attention_for(error_type),
+                ApplyEndAttention::BuildBlocked,
+                "{error_type} is a blocker the user can resolve, not a failed build"
+            );
+        }
+    }
+
+    #[test]
+    fn apply_end_attention_reports_other_failures_as_failed() {
+        for error_type in ["generic_error", "build_error", "an_unknown_type"] {
+            assert_eq!(
+                attention_for(error_type),
+                ApplyEndAttention::BuildFailed,
+                "{error_type} must not be hidden or downgraded"
+            );
+        }
+        assert_eq!(
+            apply_end_attention(&serde_json::json!({ "ok": false })),
+            ApplyEndAttention::BuildFailed
+        );
+    }
+
+    #[test]
+    fn apply_end_attention_matches_the_payloads_rebuild_actually_emits() {
+        let log_path = std::path::Path::new("/tmp/nixmac-apply.log");
+        let etc_clobber = etc_clobber_error_payload(
+            crate::shared_types::EtcClobberCheckResult {
+                ok: false,
+                checked: 1,
+                conflicts: Vec::new(),
+                warnings: Vec::new(),
+            },
+            log_path,
+        );
+        let app_management_preflight = app_management_error_payload(
+            crate::shared_types::AppManagementCheckResult {
+                ok: false,
+                checked: 1,
+                targets: Vec::new(),
+                failures: Vec::new(),
+            },
+            log_path,
+        );
+        let app_management_activation = handle_activation_error(
+            &failed_activation("", "Permission denied when trying to update apps"),
+            log_path,
+        );
+        let authorization_denied =
+            handle_activation_error(&failed_activation("", "authorization failed"), log_path);
+        let user_cancelled =
+            handle_activation_error(&failed_activation("", "User canceled. (-128)"), log_path);
+        let generic = handle_activation_error(&failed_activation("", "boom"), log_path);
+
+        for (payload, expected) in [
+            (&etc_clobber, ApplyEndAttention::BuildBlocked),
+            (&app_management_preflight, ApplyEndAttention::BuildBlocked),
+            (&app_management_activation, ApplyEndAttention::BuildBlocked),
+            (&authorization_denied, ApplyEndAttention::BuildBlocked),
+            (&user_cancelled, ApplyEndAttention::Silent),
+            (&generic, ApplyEndAttention::BuildFailed),
+        ] {
+            assert_eq!(apply_end_attention(payload), expected, "{payload}");
+        }
     }
 }

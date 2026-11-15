@@ -182,21 +182,37 @@ objc2-service-management = { version = "0.3.2", default-features = false, featur
 objc2 = "0.6"
 objc2-foundation = { version = "0.3.2", default-features = false, features = [
   "std",
+  "NSArray",
   "NSDictionary",
   "NSError",
+  "NSGeometry",
+  "NSNotification",
+  "NSObject",
+  "NSOperation",
   "NSString",
   "NSThread",
+  "NSUserNotification",
+  "block2",
 ] }
 block2 = "0.6"
 dispatch2 = "0.3"
-# Typed `NSWindow` bindings for the floating-panel setup in `peek.rs` and the
-# `NIXMAC_E2E_OPAQUE_WINDOW` diagnostic in `main.rs`. Already in the tree
+# Typed AppKit bindings for the floating-panel setup in `peek.rs`, the
+# `NIXMAC_E2E_OPAQUE_WINDOW` diagnostic in `main.rs`, and the menu-bar popover
+# (`main_window.rs`: status item, screens, events). Already in the tree
 # through Tauri; declared directly with the exact features this code uses, so
 # the build does not depend on Tauri's own feature selection.
 objc2-app-kit = { version = "0.3.2", default-features = false, features = [
   "std",
+  "NSApplication",
+  "NSButton",
+  "NSControl",
+  "NSEvent",
   "NSResponder",
+  "NSScreen",
+  "NSStatusBarButton",
+  "NSView",
   "NSWindow",
+  "block2",
   "objc2-core-foundation",
 ] }
 
