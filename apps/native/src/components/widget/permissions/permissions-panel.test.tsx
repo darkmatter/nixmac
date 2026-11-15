@@ -215,7 +215,7 @@ describe("PermissionsPanel — the unattended sync helper row", () => {
     fireEvent.click(pending);
     expect(mockRetryHelper).toHaveBeenCalledTimes(1);
     finishRetry();
-    await waitFor(() => expect(mockRefresh).toHaveBeenCalled());
+    await waitFor(() => expect(mockRefresh).toHaveBeenCalledTimes(2));
     expect(mockRequest).not.toHaveBeenCalled();
     expect(mockDisableHelper).not.toHaveBeenCalled();
   });
@@ -327,7 +327,7 @@ describe("PermissionsPanel — the unattended sync helper row", () => {
     fireEvent.click(getByRole("button", { name: "Retry" }));
     await waitFor(() => {
       expect(mockRetryHelper).toHaveBeenCalledTimes(1);
-      expect(mockRefresh).toHaveBeenCalled();
+      expect(mockRefresh).toHaveBeenCalledTimes(2);
     });
     expect(mockRequest).not.toHaveBeenCalled();
   });
