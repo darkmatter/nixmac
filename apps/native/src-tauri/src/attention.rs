@@ -628,8 +628,8 @@ mod macos {
     use std::cell::RefCell;
 
     use objc2::runtime::ProtocolObject;
-    use objc2::{MainThreadOnly, define_class, msg_send, rc::Retained};
-    use objc2_foundation::{MainThreadMarker, NSObject, NSObjectProtocol, NSString};
+    use objc2::{ClassType, MainThreadOnly, define_class, msg_send, rc::Retained};
+    use objc2_foundation::{MainThreadMarker, NSArray, NSObject, NSObjectProtocol, NSString};
     #[allow(deprecated)]
     use objc2_foundation::{
         NSUserNotification, NSUserNotificationCenter, NSUserNotificationCenterDelegate,
@@ -747,34 +747,106 @@ mod macos {
         static INSTALLED: RefCell<Option<Installed>> = const { RefCell::new(None) };
     }
 
+    const CENTER_UNAVAILABLE: &str = "macOS returned no notification center for this process \
+         (it has no bundle identifier, as in an unbundled development run)";
+    const BACKEND_BUSY: &str = "Attention notification backend is busy";
+    const BACKEND_GONE: &str = "Attention notification backend is no longer available";
+
+    /// The process-wide notification center, or `None` when macOS has none
+    /// for this process.
+    ///
+    /// Foundation returns nil for a process without a bundle identifier, such
+    /// as an unbundled development run. The generated binding declares the
+    /// return non-null and panics on nil, so send the message directly and
+    /// let the caller turn nil into an error.
     #[allow(deprecated)]
+    fn default_center() -> Option<Retained<NSUserNotificationCenter>> {
+        // SAFETY: `+defaultUserNotificationCenter` takes no arguments and
+        // returns an autoreleased, nullable NSUserNotificationCenter.
+        unsafe {
+            msg_send![
+                NSUserNotificationCenter::class(),
+                defaultUserNotificationCenter
+            ]
+        }
+    }
+
+    /// Notifications the center still shows, or `None` when it reports none.
+    /// Sent directly for the same reason as [`default_center`].
+    #[allow(deprecated)]
+    fn delivered_notifications(
+        center: &NSUserNotificationCenter,
+    ) -> Option<Retained<NSArray<NSUserNotification>>> {
+        // SAFETY: `-deliveredNotifications` takes no arguments and returns an
+        // autoreleased NSArray of NSUserNotification, treated here as nullable.
+        unsafe { msg_send![center, deliveredNotifications] }
+    }
+
+    /// Run `f` with exclusive access to the installed backend.
+    ///
+    /// Fails instead of panicking when the slot is already in use or its
+    /// thread-local storage is gone. The panic hook reaches this module
+    /// through [`super::crash`], possibly while the panicking frame still
+    /// holds the slot, and a second panic there aborts the process.
+    fn with_slot_mut<T>(
+        slot: &'static std::thread::LocalKey<RefCell<Option<Installed>>>,
+        f: impl FnOnce(&mut Option<Installed>) -> Result<T, String>,
+    ) -> Result<T, String> {
+        slot.try_with(|cell| match cell.try_borrow_mut() {
+            Ok(mut installed) => f(&mut installed),
+            Err(_) => Err(BACKEND_BUSY.to_string()),
+        })
+        .unwrap_or_else(|_| Err(BACKEND_GONE.to_string()))
+    }
+
+    /// Shared-access counterpart of [`with_slot_mut`].
+    fn with_slot<T>(
+        slot: &'static std::thread::LocalKey<RefCell<Option<Installed>>>,
+        f: impl FnOnce(Option<&Installed>) -> Result<T, String>,
+    ) -> Result<T, String> {
+        slot.try_with(|cell| match cell.try_borrow() {
+            Ok(installed) => f(installed.as_ref()),
+            Err(_) => Err(BACKEND_BUSY.to_string()),
+        })
+        .unwrap_or_else(|_| Err(BACKEND_GONE.to_string()))
+    }
+
     pub(super) fn install() -> Result<(), String> {
         let mtm = MainThreadMarker::new().ok_or_else(|| {
             "Attention notifications must be installed on the main thread".to_string()
         })?;
-        INSTALLED.with(|slot| {
-            let mut installed = slot.borrow_mut();
+        install_into(&INSTALLED, default_center, || AttentionDelegate::new(mtm))
+    }
+
+    /// Install the backend into `slot` unless it is already there, then
+    /// reassert the delegate. A missing center is an error and leaves the
+    /// slot empty, so a later call looks the center up again.
+    #[allow(deprecated)]
+    fn install_into(
+        slot: &'static std::thread::LocalKey<RefCell<Option<Installed>>>,
+        center: impl FnOnce() -> Option<Retained<NSUserNotificationCenter>>,
+        delegate: impl FnOnce() -> Retained<AttentionDelegate>,
+    ) -> Result<(), String> {
+        with_slot_mut(slot, |installed| {
             if installed.is_none() {
+                let center = center().ok_or_else(|| CENTER_UNAVAILABLE.to_string())?;
                 *installed = Some(Installed {
-                    center: NSUserNotificationCenter::defaultUserNotificationCenter(),
-                    delegate: AttentionDelegate::new(mtm),
+                    center,
+                    delegate: delegate(),
                 });
             }
-            installed
-                .as_ref()
-                .expect("attention delegate was just installed")
-                .reassert_delegate();
-        });
-        Ok(())
+            if let Some(installed) = installed.as_ref() {
+                installed.reassert_delegate();
+            }
+            Ok(())
+        })
     }
 
     #[allow(deprecated)]
     pub(super) fn deliver(notice: Notice, generation: u64) -> Result<(), String> {
         install()?;
-        INSTALLED.with(|slot| {
-            let installed = slot.borrow();
+        with_slot(&INSTALLED, |installed| {
             let installed = installed
-                .as_ref()
                 .ok_or_else(|| "Attention notification delegate is unavailable".to_string())?;
             installed.reassert_delegate();
 
@@ -791,28 +863,116 @@ mod macos {
 
     #[allow(deprecated)]
     pub(super) fn clear_delivered(scope: AttentionScope, generation: u64) {
-        INSTALLED.with(|slot| {
-            if let Some(installed) = slot.borrow().as_ref() {
-                let delivered = installed.center.deliveredNotifications();
-                for notification in delivered.iter() {
-                    let identifier = notification.identifier().map(|value| value.to_string());
-                    if should_clear_delivered_notice(identifier.as_deref(), scope, generation) {
-                        installed.center.removeDeliveredNotification(&notification);
-                    }
+        let cleared = with_slot(&INSTALLED, |installed| {
+            let Some(installed) = installed else {
+                return Ok(());
+            };
+            let Some(delivered) = delivered_notifications(&installed.center) else {
+                return Ok(());
+            };
+            for notification in delivered.iter() {
+                let identifier = notification.identifier().map(|value| value.to_string());
+                if should_clear_delivered_notice(identifier.as_deref(), scope, generation) {
+                    installed.center.removeDeliveredNotification(&notification);
                 }
             }
+            Ok(())
         });
+        if let Err(error) = cleared {
+            log::debug!("Could not clear delivered attention notifications: {error}");
+        }
     }
 
     pub(super) fn shutdown() {
-        INSTALLED.with(|slot| {
-            slot.borrow_mut().take();
-        });
+        // Take the backend out first so its `Drop` runs after the slot is
+        // released.
+        let taken = with_slot_mut(&INSTALLED, |installed| Ok(installed.take()));
+        match taken {
+            Ok(installed) => drop(installed),
+            Err(error) => log::debug!("Could not shut down attention notifications: {error}"),
+        }
     }
 
     #[cfg(test)]
     mod tests {
         use super::*;
+
+        thread_local! {
+            static TEST_SLOT: RefCell<Option<Installed>> = const { RefCell::new(None) };
+        }
+
+        /// `cargo test` binaries have no bundle identifier, which is exactly
+        /// the process shape where Foundation returns a nil center. The
+        /// generated binding panics on that nil; this lookup must not.
+        #[test]
+        fn looking_up_the_center_without_a_bundle_identifier_does_not_panic() {
+            let _center = default_center();
+        }
+
+        /// A missing center is an error the caller logs. It must never unwind
+        /// into app setup, and it must leave the slot empty and usable.
+        #[test]
+        fn installing_without_a_center_is_an_error_and_leaves_the_slot_empty() {
+            thread_local! {
+                static SLOT: RefCell<Option<Installed>> = const { RefCell::new(None) };
+            }
+            let no_delegate = || -> Retained<AttentionDelegate> {
+                unreachable!("no delegate is built when the center is missing")
+            };
+
+            assert_eq!(
+                install_into(&SLOT, || None, no_delegate),
+                Err(CENTER_UNAVAILABLE.to_string())
+            );
+            assert_eq!(
+                with_slot(&SLOT, |installed| Ok(installed.is_none())),
+                Ok(true)
+            );
+            assert_eq!(
+                install_into(&SLOT, || None, no_delegate),
+                Err(CENTER_UNAVAILABLE.to_string())
+            );
+        }
+
+        /// Test threads are never the main thread, so the public entry point
+        /// reports an error there too.
+        #[test]
+        fn installing_off_the_main_thread_is_an_error() {
+            assert!(MainThreadMarker::new().is_some() || install().is_err());
+        }
+
+        #[test]
+        fn a_reentrant_backend_call_fails_instead_of_panicking() {
+            let outer = with_slot_mut(&TEST_SLOT, |_| {
+                assert_eq!(
+                    with_slot_mut(&TEST_SLOT, |_| Ok(())),
+                    Err(BACKEND_BUSY.to_string())
+                );
+                assert_eq!(
+                    with_slot(&TEST_SLOT, |_| Ok(())),
+                    Err(BACKEND_BUSY.to_string())
+                );
+                Ok(())
+            });
+            assert_eq!(outer, Ok(()));
+
+            let shared = with_slot(&TEST_SLOT, |_| {
+                assert_eq!(
+                    with_slot_mut(&TEST_SLOT, |_| Ok(())),
+                    Err(BACKEND_BUSY.to_string())
+                );
+                Ok(())
+            });
+            assert_eq!(shared, Ok(()));
+        }
+
+        #[test]
+        fn the_slot_is_usable_again_after_a_failed_call() {
+            let failed: Result<(), String> =
+                with_slot_mut(&TEST_SLOT, |_| Err("center unavailable".to_string()));
+            assert!(failed.is_err());
+            assert_eq!(with_slot_mut(&TEST_SLOT, |_| Ok(())), Ok(()));
+        }
 
         #[test]
         fn only_owned_attention_notifications_open_the_main_window() {

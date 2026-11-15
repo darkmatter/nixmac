@@ -182,6 +182,7 @@ objc2-service-management = { version = "0.3.2", default-features = false, featur
 objc2 = "0.6"
 objc2-foundation = { version = "0.3.2", default-features = false, features = [
   "std",
+  "NSArray",
   "NSDictionary",
   "NSError",
   "NSGeometry",
