@@ -100,12 +100,13 @@ export function computeRepairPlan(inputs: RepairInputs): RepairPlan {
     // shows the earlier NoHelper/Removed (or Ready) report while the
     // preference already says Granted. That is setup in progress, not a
     // failure and not an opt-out; the loop publishes the real phase next.
-    const phase =
-      observedPhase === "disabled" || observedPhase === "ready" ? "reconciling" : observedPhase;
+    // The earlier row's sentence ("not installed", "has been removed") would
+    // contradict the progress heading, so it is dropped along with its phase.
+    const superseded = observedPhase === "disabled" || observedPhase === "ready";
     banners.push({
       kind: "helper-inactive",
-      phase,
-      instructions: inputs.helperRow.instructions ?? null,
+      phase: superseded ? "reconciling" : observedPhase,
+      instructions: superseded ? null : (inputs.helperRow.instructions ?? null),
     });
   }
 

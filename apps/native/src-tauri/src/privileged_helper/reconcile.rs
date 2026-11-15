@@ -45,7 +45,9 @@ use crate::privileged_helper::service::{
 use crate::shared_types::{HelperDecision, HelperPreference};
 use crate::state::preferences;
 use crate::system::install_location::{self, InstallLocation};
+use std::cell::Cell;
 use std::fmt::Display;
+use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::{Mutex, PoisonError, TryLockError};
 use std::time::Duration;
 use tauri::{AppHandle, Runtime};
@@ -542,10 +544,43 @@ fn run<E: Environment>(running: &Mutex<()>, env: &E) -> Reconciled {
     reported(converge(env, Invocation::Observe).unwrap_or_else(|report| report))
 }
 
-/// Logs one run's outcome and hands it back.
+/// Logs one run's outcome, stamps its place in the order of finished passes,
+/// and hands it back.
+///
+/// Every caller that holds the single-flight slot calls this before releasing
+/// it (the slot guard outlives the tail expression that calls this), so the
+/// stamps of two passes are in the order the passes observed the world. That
+/// order is what lets the permission surface refuse a report that finished
+/// before the one it already shows, whichever thread gets to publish first.
+/// A report produced without a pass (a refused gate, an unwritable decision)
+/// is stamped when it is made. `Busy` learned nothing and gets no stamp.
 fn reported(outcome: Reconciled) -> Reconciled {
     log::info!("helper reconciliation: {outcome:?}");
+    let order = if matches!(outcome, Reconciled::Busy) {
+        None
+    } else {
+        Some(FINISHED_PASSES.fetch_add(1, Ordering::SeqCst) + 1)
+    };
+    LAST_PASS_ORDER.with(|last| last.set(order));
     outcome
+}
+
+/// Counts finished passes; see [`reported`].
+static FINISHED_PASSES: AtomicU64 = AtomicU64::new(0);
+
+thread_local! {
+    /// The stamp of the pass this thread finished last, until it is taken.
+    /// A thread-local rather than part of the return value so the entry
+    /// points keep returning the bare report their many callers match on.
+    static LAST_PASS_ORDER: Cell<Option<u64>> = const { Cell::new(None) };
+}
+
+/// The place, among all finished passes, of the pass the calling thread just
+/// ran through [`reconcile`], [`grant`], [`retry`] or [`disable`]. `None` when
+/// that call answered `Busy`. Taking it clears it, so a stamp is never
+/// attributed to a later call.
+pub(crate) fn take_pass_order() -> Option<u64> {
+    LAST_PASS_ORDER.with(Cell::take)
 }
 
 /// What the stored decision asks for. The third stored value, "undecided", is

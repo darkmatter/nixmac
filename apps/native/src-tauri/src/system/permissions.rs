@@ -119,6 +119,9 @@ fn vite_skip_permissions_enabled() -> bool {
     false
 }
 
+/// The unattended sync helper's row id.
+pub(crate) const HELPER_PERMISSION_ID: &str = "privileged-helper";
+
 /// Whether this build reports every permission granted without probing.
 pub(crate) fn skip_enabled() -> bool {
     skip_permissions_enabled()
@@ -132,7 +135,7 @@ fn granted_permissions_state() -> PermissionsState {
     let mut permissions = get_default_permissions();
     for perm in &mut permissions {
         perm.status = PermissionStatus::Granted;
-        if perm.id == "privileged-helper" {
+        if perm.id == HELPER_PERMISSION_ID {
             perm.helper_phase = Some(HelperPermissionPhase::Ready);
         }
         // Granted here is a debug-build fiction, not a probe result; say so
@@ -169,7 +172,7 @@ fn privileged_helper_permission(
     helper_phase: Option<HelperPermissionPhase>,
 ) -> Permission {
     Permission {
-        id: "privileged-helper".to_string(),
+        id: HELPER_PERMISSION_ID.to_string(),
         name: "Unattended Sync Helper".to_string(),
         description:
             "Required for unattended device sync to activate builds without a password prompt"
@@ -408,13 +411,20 @@ fn check_admin_privileges() -> PermissionStatus {
 /// The helper row is one run of the reconciliation function, which is also how
 /// a routine refresh converges the installed helper on this build. It must not
 /// run on the main thread — see [`helper_permission::observe`].
-pub fn check_all_permissions<R: Runtime>(app: &AppHandle<R>) -> PermissionsState {
+///
+/// Returned with the state is the helper observation's place in the order of
+/// finished reconciliation passes, which `permissions_state::refresh` needs to
+/// store the helper row safely. It is `None` when the helper row is not an
+/// observation of its own: the permission skip, or a `Busy` run that fell back
+/// to the last known row.
+pub fn check_all_permissions<R: Runtime>(app: &AppHandle<R>) -> (PermissionsState, Option<u64>) {
     // Debug/test environments may not have TCC permissions granted and cannot
     // obtain them programmatically, so the skip flags satisfy the whole gate.
     if skip_permissions_enabled() {
         info!("permission skip enabled: reporting all permissions as granted");
-        return granted_permissions_state();
+        return (granted_permissions_state(), None);
     }
+    let mut helper_order = None;
 
     let mut permissions = get_default_permissions();
     let mut all_required_granted = true; // assume true until proven otherwise
@@ -425,8 +435,10 @@ pub fn check_all_permissions<R: Runtime>(app: &AppHandle<R>) -> PermissionsState
         // sentence that tells the user what is true, and whether nixmac can still
         // get anywhere on its own — so it is replaced rather than patched field by
         // field, and `helper_row` stays the only place a report becomes a row.
-        if perm.id == "privileged-helper" {
-            *perm = check_privileged_helper(app);
+        if perm.id == HELPER_PERMISSION_ID {
+            let (row, order) = check_privileged_helper(app);
+            *perm = row;
+            helper_order = order;
         } else {
             perm.status = match perm.id.as_str() {
                 "desktop" => check_desktop_access(),
@@ -479,11 +491,14 @@ pub fn check_all_permissions<R: Runtime>(app: &AppHandle<R>) -> PermissionsState
         all_required_granted
     );
 
-    PermissionsState {
-        permissions,
-        all_required_granted,
-        checked_at: Some(now.timestamp()),
-    }
+    (
+        PermissionsState {
+            permissions,
+            all_required_granted,
+            checked_at: Some(now.timestamp()),
+        },
+        helper_order,
+    )
 }
 
 /// Request a specific permission
@@ -655,22 +670,27 @@ pub fn request_permission<R: Runtime>(
 /// a report, and the report is what tells the user what to do: approve in Login
 /// Items, move the app to /Applications, restart the app, or wait out a running
 /// activation.
-fn check_privileged_helper<R: Runtime>(app: &AppHandle<R>) -> Permission {
-    let report = helper_permission::observe(app);
-    // A refresh is how a user comes back to this — opening the panel, or
-    // pressing Check again — and one run is usually not enough: the platform
-    // refuses a register for about a second after any unregister, so the run
-    // that repairs a helper typically reports a failure and needs a successor.
-    // Starting the loop here means the visit converges instead of handing back a
-    // scary report. A loop already running ignores this.
+fn check_privileged_helper<R: Runtime>(app: &AppHandle<R>) -> (Permission, Option<u64>) {
+    let (report, order) = helper_permission::observe_ordered(app);
+    // A refresh is how a user comes back to this (opening the panel, or
+    // pressing Check again), and one run is often not enough: replacing a
+    // registered helper, or one waiting on approval or on a running
+    // activation, takes several passes. Starting the loop here means the visit
+    // keeps observing instead of handing back a single transient report. The
+    // loop only observes: it never registers a missing helper, so a missing
+    // registration settles at `RegistrationUnavailable` and waits for an
+    // explicit Enable or Retry. A loop already running ignores this.
     helper_permission::start_converging(app);
     let previous = permissions_state::get(app).and_then(|state| {
         state
             .permissions
             .into_iter()
-            .find(|permission| permission.id == "privileged-helper")
+            .find(|permission| permission.id == HELPER_PERMISSION_ID)
     });
-    helper_row_from_observation(&report, helper_permission::removing(app), previous)
+    (
+        helper_row_from_observation(&report, helper_permission::removing(app), previous),
+        order,
+    )
 }
 
 fn helper_row_from_observation(
@@ -907,7 +927,7 @@ mod tests {
         unsafe { std::env::set_var("VITE_NIXMAC_SKIP_PERMISSIONS", "true") };
 
         let app = mock_app();
-        let state = check_all_permissions(app.handle());
+        let (state, _) = check_all_permissions(app.handle());
 
         assert!(state.all_required_granted);
         assert!(
@@ -931,7 +951,7 @@ mod tests {
         unsafe { std::env::remove_var("VITE_NIXMAC_SKIP_PERMISSIONS") };
 
         let app = mock_app();
-        let state = check_all_permissions(app.handle());
+        let (state, _) = check_all_permissions(app.handle());
 
         assert!(state.all_required_granted);
         assert!(

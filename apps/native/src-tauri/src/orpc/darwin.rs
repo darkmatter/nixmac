@@ -80,14 +80,16 @@ struct HelperReport {
 }
 
 impl HelperReport {
-    fn of(report: &crate::privileged_helper::reconcile::Reconciled) -> Self {
+    /// `removing` is whether the stored decision is Disable, so progress and
+    /// waiting describe the removal the way the permission row does.
+    fn of(report: &crate::privileged_helper::reconcile::Reconciled, removing: bool) -> Self {
         Self {
             at_this_build: matches!(
                 report,
                 crate::privileged_helper::reconcile::Reconciled::AtThisBuild
             ),
             phase: helper_permission::phase(report),
-            detail: helper_permission::action_detail(report),
+            detail: helper_permission::action_detail(report, removing),
         }
     }
 }
@@ -225,14 +227,22 @@ async fn rebuild_status(ctx: OrpcCtx, _input: ()) -> Result<RebuildStatus, ORPCE
 /// The same single run a status refresh makes, and no more than that: a refresh
 /// also starts the convergence loop, and this does not.
 async fn helper_status(ctx: OrpcCtx, _input: ()) -> Result<HelperReport, ORPCError> {
-    Ok(HelperReport::of(&helper_permission::observe(&ctx.app)))
+    let report = helper_permission::observe(&ctx.app);
+    Ok(HelperReport::of(
+        &report,
+        helper_permission::removing(&ctx.app),
+    ))
 }
 
 /// The explicit Grant action. Grant is the only action that may open Login
 /// Items; `permissions.request("privileged-helper")` is the same action reached
 /// from the permission row.
 async fn helper_grant(ctx: OrpcCtx, _input: ()) -> Result<HelperReport, ORPCError> {
-    Ok(HelperReport::of(&helper_permission::grant(&ctx.app)))
+    let report = helper_permission::grant(&ctx.app);
+    Ok(HelperReport::of(
+        &report,
+        helper_permission::removing(&ctx.app),
+    ))
 }
 
 /// Retry the stored decision without recording a new one or opening System
@@ -240,14 +250,22 @@ async fn helper_grant(ctx: OrpcCtx, _input: ()) -> Result<HelperReport, ORPCErro
 /// retries the removal; an undecided user is handled exactly like an
 /// observation, including adoption of a registration that already exists.
 async fn helper_retry(ctx: OrpcCtx, _input: ()) -> Result<HelperReport, ORPCError> {
-    Ok(HelperReport::of(&helper_permission::retry(&ctx.app)))
+    let report = helper_permission::retry(&ctx.app);
+    Ok(HelperReport::of(
+        &report,
+        helper_permission::removing(&ctx.app),
+    ))
 }
 
 /// The explicit Disable action: unregister the helper (deferring while an
 /// activation runs) and
 /// register nothing. No later automatic run overrides it.
 async fn helper_disable(ctx: OrpcCtx, _input: ()) -> Result<HelperReport, ORPCError> {
-    Ok(HelperReport::of(&helper_permission::disable(&ctx.app)))
+    let report = helper_permission::disable(&ctx.app);
+    Ok(HelperReport::of(
+        &report,
+        helper_permission::removing(&ctx.app),
+    ))
 }
 
 async fn sync_agent_status(_ctx: OrpcCtx, _input: ()) -> Result<SyncAgentStatus, ORPCError> {

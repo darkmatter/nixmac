@@ -10,7 +10,7 @@ import { cn } from "@/lib/utils";
 import { useViewModel } from "@nixmac/state";
 import { useQuery } from "@tanstack/react-query";
 import { AppWindow, Check, ExternalLink, Folder, HardDrive, KeyRound, Loader2, ShieldCheck, Terminal } from "lucide-react";
-import { type ComponentProps, type ReactNode, useEffect, useState } from "react";
+import { type ComponentProps, type ReactNode, useEffect, useRef, useState } from "react";
 
 type ActionButtonProps = {
   idle: ReactNode;
@@ -96,7 +96,26 @@ export function PermissionsPanel() {
   >(
     () => new Map(),
   );
-  const [notice, setNotice] = useState<{ tone: "info" | "error"; message: string } | null>(null);
+  // `helper` marks a notice about a helper action. It belongs to the helper
+  // phase it was raised in and is dropped when that phase ends.
+  const [notice, setNotice] = useState<{
+    tone: "info" | "error";
+    message: string;
+    helper?: boolean;
+  } | null>(null);
+  // A helper action's error describes one failure episode. Once the helper row
+  // moves on, including recovering by itself, the error is obsolete: left up,
+  // it would sit next to a Ready row. Each phase change starts a new episode
+  // and clears it, and a request still pending when its episode ends does not
+  // report into the next one. Notices about other permissions are untouched.
+  const helperPhase =
+    permissionsState?.permissions.find((permission) => permission.id === HELPER_PERMISSION_ID)
+      ?.helperPhase ?? null;
+  const helperEpisode = useRef(0);
+  useEffect(() => {
+    helperEpisode.current += 1;
+    setNotice((current) => (current?.helper ? null : current));
+  }, [helperPhase]);
 
   // Updater form: two rows can start or settle in the same tick.
   function startAction(id: string, action: "grant" | "retry" | "disable") {
@@ -128,6 +147,8 @@ export function PermissionsPanel() {
     installLocation?.bundlePath != null && !installLocation.inApplicationsDir;
 
   async function handleGrant(permission: Permission) {
+    const isHelper = permission.id === HELPER_PERMISSION_ID;
+    const episode = helperEpisode.current;
     startAction(permission.id, "grant");
     setNotice(null);
     try {
@@ -156,10 +177,13 @@ export function PermissionsPanel() {
       await tauriAPI.permissions.refresh();
     } catch (error) {
       console.error("Failed to request permission:", error);
-      setNotice({
-        tone: "error",
-        message: `Permission request failed: ${error instanceof Error ? error.message : String(error)}`,
-      });
+      if (!isHelper || episode === helperEpisode.current) {
+        setNotice({
+          tone: "error",
+          message: `Permission request failed: ${error instanceof Error ? error.message : String(error)}`,
+          helper: isHelper,
+        });
+      }
     } finally {
       finishAction(permission.id);
     }
@@ -171,6 +195,7 @@ export function PermissionsPanel() {
    * approval — that row deep-links to Login Items instead.
    */
   async function handleDisableHelper() {
+    const episode = helperEpisode.current;
     startAction(HELPER_PERMISSION_ID, "disable");
     setNotice(null);
     try {
@@ -178,10 +203,13 @@ export function PermissionsPanel() {
       await client.permissions.refresh();
     } catch (error) {
       console.error("Failed to disable the unattended sync helper:", error);
-      setNotice({
-        tone: "error",
-        message: `Disabling the unattended sync helper failed: ${error instanceof Error ? error.message : String(error)}`,
-      });
+      if (episode === helperEpisode.current) {
+        setNotice({
+          tone: "error",
+          message: `Disabling the unattended sync helper failed: ${error instanceof Error ? error.message : String(error)}`,
+          helper: true,
+        });
+      }
     } finally {
       finishAction(HELPER_PERMISSION_ID);
     }
@@ -192,6 +220,7 @@ export function PermissionsPanel() {
    * row offers it only for those two decisions.
    */
   async function handleRetryHelper() {
+    const episode = helperEpisode.current;
     startAction(HELPER_PERMISSION_ID, "retry");
     setNotice(null);
     try {
@@ -202,7 +231,13 @@ export function PermissionsPanel() {
       const diagnostic = diagnostics[DIAGNOSTIC_CODES.HELPER_RETRY_FAILED]({
         detail: error instanceof Error ? error.message : String(error),
       });
-      setNotice({ tone: "error", message: `${diagnostic.message} ${diagnostic.fix ?? ""}`.trim() });
+      if (episode === helperEpisode.current) {
+        setNotice({
+          tone: "error",
+          message: `${diagnostic.message} ${diagnostic.fix ?? ""}`.trim(),
+          helper: true,
+        });
+      }
     } finally {
       finishAction(HELPER_PERMISSION_ID);
     }

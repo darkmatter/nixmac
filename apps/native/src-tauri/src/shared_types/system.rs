@@ -76,7 +76,7 @@ pub enum HelperPermissionPhase {
 }
 
 /// Individual permission state.
-#[derive(Debug, Clone, Serialize, Deserialize, Type)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Type)]
 #[serde(rename_all = "camelCase")]
 pub struct Permission {
     /// Stable permission identifier.
@@ -107,7 +107,7 @@ pub struct Permission {
 }
 
 /// All permissions state.
-#[derive(Debug, Clone, Serialize, Deserialize, Type)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Type)]
 #[serde(rename_all = "camelCase")]
 pub struct PermissionsState {
     /// Individual permission states.

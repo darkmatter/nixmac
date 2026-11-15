@@ -242,6 +242,66 @@ describe("PermissionsPanel — the unattended sync helper row", () => {
     consoleError.mockRestore();
   });
 
+  it("drops a failed Retry notice once the helper row moves on", async () => {
+    helperPreference.mockReturnValue("granted");
+    permissionsState.mockReturnValue({
+      permissions: [helperPermission({ helperPhase: "failed" })],
+      allRequiredGranted: false,
+      checkedAt: null,
+    });
+    mockRetryHelper.mockRejectedValue(new Error("IPC channel closed"));
+    const consoleError = vi.spyOn(console, "error").mockImplementation(() => {});
+
+    const rendered = await panel();
+    fireEvent.click(screen.getByRole("button", { name: "Retry" }));
+    const retryFailed = /Retrying the unattended sync helper failed/;
+    expect(await screen.findByText(retryFailed)).toBeTruthy();
+
+    // The helper recovers by itself. The old error must not sit next to Ready.
+    permissionsState.mockReturnValue({
+      permissions: [helperPermission({ status: "granted", helperPhase: "ready" })],
+      allRequiredGranted: true,
+      checkedAt: null,
+    });
+    rendered.repaint();
+    await waitFor(() => expect(screen.queryByText(retryFailed)).toBeNull());
+    consoleError.mockRestore();
+  });
+
+  it("does not raise a Retry error for an episode that already ended", async () => {
+    helperPreference.mockReturnValue("granted");
+    permissionsState.mockReturnValue({
+      permissions: [helperPermission({ helperPhase: "failed" })],
+      allRequiredGranted: false,
+      checkedAt: null,
+    });
+    let failRetry: (error: Error) => void = () => {};
+    mockRetryHelper.mockImplementation(
+      () =>
+        new Promise((_resolve, reject) => {
+          failRetry = reject;
+        }),
+    );
+    const consoleError = vi.spyOn(console, "error").mockImplementation(() => {});
+
+    const rendered = await panel();
+    fireEvent.click(screen.getByRole("button", { name: "Retry" }));
+    await screen.findByRole("button", { name: "Retrying…" });
+
+    // The row recovers while the request is still pending, then the request
+    // fails. Its error belongs to the episode that is over.
+    permissionsState.mockReturnValue({
+      permissions: [helperPermission({ status: "granted", helperPhase: "ready" })],
+      allRequiredGranted: true,
+      checkedAt: null,
+    });
+    rendered.repaint();
+    failRetry(new Error("IPC channel closed"));
+    await waitFor(() => expect(screen.queryByRole("button", { name: "Retrying…" })).toBeNull());
+    expect(screen.queryByText(/Retrying the unattended sync helper failed/)).toBeNull();
+    consoleError.mockRestore();
+  });
+
   it("offers Retry without removing Disable after automatic recovery fails", async () => {
     helperPreference.mockReturnValue("granted");
     permissionsState.mockReturnValue({

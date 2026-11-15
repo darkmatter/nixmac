@@ -154,10 +154,18 @@ describe("computeRepairPlan", () => {
       const plan = computeRepairPlan(
         makeInputs({
           helperPreference: "granted",
-          helperRow: makeHelperRow({ helperPhase }),
+          helperRow: makeHelperRow({
+            helperPhase,
+            instructions: "The unattended sync helper is disabled and has been removed.",
+          }),
         }),
       );
-      expect(plan.banners[0]).toMatchObject({ kind: "helper-inactive", phase: "reconciling" });
+      // The earlier row's sentence would contradict the progress heading.
+      expect(plan.banners[0]).toEqual({
+        kind: "helper-inactive",
+        phase: "reconciling",
+        instructions: null,
+      });
     }
   });
 
