@@ -11,7 +11,6 @@ export function UpdateBanner() {
     downloading,
     progress,
     error,
-    errorSource,
     installUpdate,
     dismiss,
   } = useUpdater();
@@ -35,7 +34,7 @@ export function UpdateBanner() {
     const observer = new ResizeObserver(measure);
     observer.observe(el);
     return () => observer.disconnect();
-  }, [notes, error, errorSource, expanded]);
+  }, [notes, error, expanded]);
 
   // Collapse again when the banner content changes so we re-measure fresh.
   useEffect(() => {
@@ -64,7 +63,7 @@ export function UpdateBanner() {
             ref={errorRef}
             className={cn(expanded ? "whitespace-pre-wrap wrap-break-word" : "truncate")}
           >
-            {errorSource === "install" ? "Update install failed" : "Update check failed"}: {error}
+            Update install failed: {error}
           </p>
         ) : (
           <>
