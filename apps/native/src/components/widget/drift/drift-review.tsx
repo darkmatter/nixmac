@@ -24,7 +24,7 @@ type BuildCheckStatus = "checking" | "passed" | "failed";
  * session keeps its own prompt input (rendered by the step), so those are
  * suppressed here.
  */
-export function DriftReview() {
+export function DriftReview({ allowBackToPrompt = true }: { allowBackToPrompt?: boolean } = {}) {
   const gitStatus = useViewModel((s) => s.git);
   const configDir = useViewModel((s) => s.preferences?.configDir ?? "");
   const evolveState = useViewModel((s) => s.evolve);
@@ -127,7 +127,7 @@ export function DriftReview() {
         isApplyBusy={isApplyBusy}
         isManualDrift={isManualDrift}
         onApply={handleApply}
-        onBackToPrompt={() => uiActions.setActiveStepOverride("begin")}
+        onBackToPrompt={allowBackToPrompt ? () => uiActions.setActiveStepOverride("begin") : undefined}
         onRefineWithAi={() => {
           void evolveFromManual();
         }}

@@ -34,6 +34,8 @@ struct FixWithAiInput {
     error: String,
     /// Backend error classification (`RebuildErrorType`), when known.
     error_type: Option<String>,
+    /// Transcript belonging to the displayed failure.
+    log_file: Option<String>,
 }
 
 #[derive(Debug, Deserialize, Serialize, Type)]
@@ -104,7 +106,7 @@ async fn evolve_handler(ctx: OrpcCtx, input: EvolveInput) -> Result<(), ORPCErro
 }
 
 async fn fix_with_ai(ctx: OrpcCtx, input: FixWithAiInput) -> Result<(), ORPCError> {
-    evolve::run_fix(ctx.app, input.error, input.error_type)
+    evolve::run_fix(ctx.app, input.error, input.error_type, input.log_file)
         .await
         .map_err(|error| internal_err("darwin.fixWithAi", error))
 }
@@ -209,6 +211,18 @@ async fn finalize_restore(ctx: OrpcCtx, input: RestoreTargetInput) -> Result<(),
         .map_err(|error| internal_err("darwin.finalizeRestore", error))
 }
 
+#[derive(Debug, Deserialize, Serialize, Type)]
+#[serde(rename_all = "camelCase")]
+struct RebuildLogInput {
+    log_file: String,
+}
+
+async fn read_rebuild_log(ctx: OrpcCtx, input: RebuildLogInput) -> Result<String, ORPCError> {
+    let status = crate::state::rebuild_status::get(&ctx.app);
+    crate::state::rebuild_status::read_completed_log(&status, &input.log_file)
+        .map_err(|error| internal_err("darwin.readRebuildLog", error))
+}
+
 async fn rebuild_status(ctx: OrpcCtx, _input: ()) -> Result<RebuildStatus, ORPCError> {
     apply::fetch_rebuild_status(ctx.app)
         .await
@@ -309,6 +323,10 @@ pub fn routes() -> Router<OrpcCtx> {
         "finalizeRestore" => os::<OrpcCtx>()
             .input(orpc_specta::specta::<RestoreTargetInput>())
             .handler(finalize_restore),
+        "readRebuildLog" => os::<OrpcCtx>()
+            .input(orpc_specta::specta::<RebuildLogInput>())
+            .output(orpc_specta::specta::<String>())
+            .handler(read_rebuild_log),
         "rebuildStatus" => os::<OrpcCtx>()
             .output(orpc_specta::specta::<RebuildStatus>())
             .handler(rebuild_status),

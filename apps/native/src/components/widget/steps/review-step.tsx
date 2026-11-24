@@ -11,11 +11,11 @@ import { ExternalBuildDetected } from "@/components/widget/notifications/externa
  * refines by adopting the changes into a session — keeping this screen compact
  * and single-purpose instead of pushing a prompt box below a tall change list.
  */
-export function ReviewStep() {
+export function ReviewStep({ allowBackToPrompt = true }: { allowBackToPrompt?: boolean } = {}) {
   return (
     <>
       <ExternalBuildDetected />
-      <DriftReview />
+      <DriftReview allowBackToPrompt={allowBackToPrompt} />
     </>
   );
 }
