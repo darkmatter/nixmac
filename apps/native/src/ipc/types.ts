@@ -102,7 +102,7 @@ serverUrl: string;
  * stored Better Auth device API key. Hosted models and brokered GitHub
  * requests share this credential.
  */
-webApiAuthReady: boolean;
+webApiAuthReady: boolean; 
 /**
  * The web-origin account associated with the device API key, when known.
  */
@@ -1423,6 +1423,16 @@ autoFormatNixFiles: boolean;
 helperPreference: HelperPreference }
 
 /**
+ * Product-facing state of the unattended sync helper.
+ * 
+ * The helper is represented in the permissions list, but its lifecycle has
+ * more states than a normal permission grant. Keeping those states typed lets
+ * every UI surface use the same copy and actions without parsing diagnostic
+ * text or overloading [`PermissionStatus`].
+ */
+export type HelperPermissionPhase = "ready" | "approvalRequired" | "reconciling" | "waitingForActivation" | "needsUserAction" | "failed" | "disabled"
+
+/**
  * The user's standing decision about the privileged helper.
  * 
  * Tri-state on purpose. `Unset` means the user never decided — a fresh install,
@@ -1880,7 +1890,11 @@ status: PermissionStatus;
 /**
  * Manual instructions for permissions that cannot be requested programmatically.
  */
-instructions?: string | null }
+instructions?: string | null; 
+/**
+ * Helper-specific lifecycle state. Absent for normal permission rows.
+ */
+helperPhase?: HelperPermissionPhase | null }
 
 /**
  * Permission status.

@@ -3,8 +3,9 @@ import { createDevReporter } from "nostics/reporters/dev";
 
 /// <reference type="vite/client" />
 
-const DIAGNOSTIC_CODES = {
+export const DIAGNOSTIC_CODES = {
   EVOLVE_NO_PROVIDER: "EVOLVE_E001",
+  HELPER_RETRY_FAILED: "HELPER_E001",
 } as const;
 
 /**
@@ -165,6 +166,12 @@ export const diagnostics = defineDiagnostics({
     [DIAGNOSTIC_CODES.EVOLVE_NO_PROVIDER]: {
       why: `No provider configured`,
       fix: `Sign into your Nixmac account or configure your provider in Settings`,
+    },
+    // The Retry request itself failed (IPC or backend error), so the helper's
+    // permission row may not reflect this attempt.
+    [DIAGNOSTIC_CODES.HELPER_RETRY_FAILED]: {
+      why: (p: { detail: string }) => `Retrying the unattended sync helper failed: ${p.detail}`,
+      fix: "Try again. If this keeps happening, report the problem.",
     },
     ...REBUILD_ERROR_DETAILS,
   },

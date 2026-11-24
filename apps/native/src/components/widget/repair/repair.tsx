@@ -4,11 +4,13 @@ import { Button } from "@/components/ui/button";
 import { RestartSetupConfirmation } from "@/components/widget/onboarding/restart-setup";
 import { tauriAPI } from "@/ipc/api";
 import { settings } from "@/lib/env";
+import { DIAGNOSTIC_CODES, diagnostics } from "@/lib/errors";
 import { client } from "@/lib/orpc";
+import { cn } from "@/lib/utils";
 import { nav } from "@/router";
 import { useViewModel } from "@nixmac/state";
 import { CircleAlert, FolderX, Loader2, RotateCcw, X } from "lucide-react";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { HELPER_PERMISSION_ID } from "@/lib/permissions";
 import {
   computeRepairPlan,
@@ -20,16 +22,8 @@ import {
 /** The inputs read once, when the (hydrated) widget mounts. */
 type LaunchSnapshot = Omit<
   RepairInputs,
-  "helperRow" | "helperPreference" | "helperGraceElapsed"
+  "helperRow" | "helperPreference"
 >;
-
-/**
- * How long "the helper was asked for and is not answering" must hold before
- * the banner shows. Not a cosmetic debounce: on any launch that re-registers
- * the helper the condition is true at mount with the backend already working
- * on it, and the grace lets those finish in silence.
- */
-export const HELPER_GRACE_MS = 10_000;
 
 /**
  * Post-completion prerequisite regressions: what to block on, what to banner.
@@ -57,21 +51,11 @@ export function useRepair(): {
   );
   const helperPreference = useViewModel((s) => s.preferences?.helperPreference ?? null);
 
-  // The grace clock keys on this boolean, not on the row: every publish is a
-  // fresh object, and a helper whose registration keeps failing publishes one
-  // per pass — restarting the clock each time would keep the banner off the
-  // screen for exactly as long as the failure lasts.
-  const helperWanted =
-    helperPreference === "granted" && helperRow !== null && helperRow.status !== "granted";
-  const [helperGraceElapsed, setHelperGraceElapsed] = useState(false);
+  // Dismissal belongs to the state the user saw. A later failure must not stay
+  // hidden because the user dismissed an earlier progress or approval notice.
   useEffect(() => {
-    if (!helperWanted) {
-      setHelperGraceElapsed(false);
-      return;
-    }
-    const timer = setTimeout(() => setHelperGraceElapsed(true), HELPER_GRACE_MS);
-    return () => clearTimeout(timer);
-  }, [helperWanted]);
+    setDismissed((current) => current.filter((kind) => kind !== "helper-inactive"));
+  }, [helperRow?.helperPhase]);
 
   const evaluate = useCallback(async () => {
     // Snapshot the store rather than subscribing: everything here is
@@ -114,7 +98,7 @@ export function useRepair(): {
   }, [evaluate]);
 
   const plan = snapshot
-    ? computeRepairPlan({ ...snapshot, helperRow, helperPreference, helperGraceElapsed })
+    ? computeRepairPlan({ ...snapshot, helperRow, helperPreference })
     : { blocking: null, banners: [] };
 
   return {
@@ -128,36 +112,63 @@ export function useRepair(): {
 }
 
 /**
- * The same Grant the helper's row in Settings → Permissions offers; it may
- * open Login Items when macOS is waiting for approval there. No re-probe
- * afterwards: this banner reads the row live, published on every
- * reconciliation pass, so a failed call is logged rather than surfaced. The
- * label keeps its box with the spinner laid over it so the running button
- * never resizes (the design-system Button animates resizes).
+ * The helper's two repair actions are intentionally distinct: approval records
+ * the opt-in and may open Login Items, while Retry carries out the stored
+ * decision again without recording a new one. A failed Retry request is
+ * reported through the same diagnostic as the Permissions panel's Retry.
  */
-function HelperGrantButton() {
-  const [granting, setGranting] = useState(false);
+function HelperActionButton({
+  action,
+  onRecheck,
+  episode,
+  onError,
+}: {
+  action: "approval" | "retry";
+  onRecheck: () => Promise<void>;
+  /** The failure episode a click starts in, read at click time. */
+  episode: () => number;
+  /** Reports for the episode the request started in; obsolete ones are ignored. */
+  onError: (episode: number, message: string | null) => void;
+}) {
+  const [working, setWorking] = useState(false);
+  const idle = action === "approval" ? "Open System Settings" : "Retry";
+  const busy = action === "approval" ? "Opening…" : "Retrying…";
   return (
     <Button
       size="sm"
       variant="outline"
-      disabled={granting}
-      aria-label={granting ? "Enabling…" : undefined}
-      aria-busy={granting}
+      disabled={working}
+      aria-label={working ? busy : undefined}
+      aria-busy={working}
       className="relative disabled:opacity-100"
       onClick={async () => {
-        setGranting(true);
+        const started = episode();
+        setWorking(true);
+        onError(started, null);
         try {
-          await client.permissions.request({ permissionId: HELPER_PERMISSION_ID });
+          if (action === "approval") {
+            await client.permissions.request({ permissionId: HELPER_PERMISSION_ID });
+          } else {
+            await client.darwin.helperRetry();
+          }
+          await onRecheck();
         } catch (error) {
-          console.error("Failed to enable the unattended sync helper:", error);
+          if (action === "retry") {
+            // Reporting the diagnostic also logs it, with its code and fix.
+            const diagnostic = diagnostics[DIAGNOSTIC_CODES.HELPER_RETRY_FAILED]({
+              detail: error instanceof Error ? error.message : String(error),
+            });
+            onError(started, `${diagnostic.message} ${diagnostic.fix ?? ""}`.trim());
+          } else {
+            console.error("Failed to open the unattended sync helper approval:", error);
+          }
         } finally {
-          setGranting(false);
+          setWorking(false);
         }
       }}
     >
-      <span className={granting ? "invisible" : undefined}>Enable</span>
-      {granting ? (
+      <span className={working ? "invisible" : undefined}>{idle}</span>
+      {working ? (
         <span className="absolute inset-0 flex items-center justify-center">
           <Loader2 className="size-4 animate-spin" aria-hidden="true" />
         </span>
@@ -176,15 +187,46 @@ export function RepairBanners({
   onDismiss: (kind: RepairIssue["kind"]) => void;
   onRecheck: () => Promise<void>;
 }) {
+  // A failed helper action, kept with the phase it failed in so a later state
+  // does not inherit it.
+  const [helperError, setHelperError] = useState<{ phase: string; message: string } | null>(null);
+  // An error belongs to one failure episode. Leaving it, including the banner
+  // disappearing because the helper recovered, clears it, so a later failure
+  // never shows an earlier transport error before its own Retry.
+  // A request still pending when its episode ends must not report into the
+  // next one, so each phase change starts a new episode and a completion only
+  // counts for the episode its click started in.
+  const helperPhase = banners.find((issue) => issue.kind === "helper-inactive")?.phase ?? null;
+  const helperEpisode = useRef(0);
+  useEffect(() => {
+    helperEpisode.current += 1;
+    setHelperError(null);
+  }, [helperPhase]);
+  const currentEpisode = () => helperEpisode.current;
+  const reportHelperError = (episode: number, phase: string, message: string | null) => {
+    if (episode !== helperEpisode.current) return;
+    setHelperError(message === null ? null : { phase, message });
+  };
   if (banners.length === 0) return null;
   return (
     <>
       {banners.map((issue) => (
         <div
           key={issue.kind}
-          className="relative mx-5 mt-2 flex items-center gap-3 rounded-lg border border-amber-500/40 bg-amber-500/10 px-4 py-3 text-amber-200 text-sm"
+          className={cn(
+            "relative mx-5 mt-2 flex items-center gap-3 rounded-lg border px-4 py-3 text-sm",
+            issue.kind === "helper-inactive" &&
+              (issue.phase === "reconciling" || issue.phase === "waitingForActivation")
+              ? "border-primary/30 bg-primary/10 text-primary"
+              : "border-amber-500/40 bg-amber-500/10 text-amber-200",
+          )}
         >
-          <CircleAlert className="size-4 shrink-0" aria-hidden="true" />
+          {issue.kind === "helper-inactive" &&
+          (issue.phase === "reconciling" || issue.phase === "waitingForActivation") ? (
+            <Loader2 className="size-4 shrink-0 animate-spin" aria-hidden="true" />
+          ) : (
+            <CircleAlert className="size-4 shrink-0" aria-hidden="true" />
+          )}
           <div className="min-w-0 flex-1">
             {issue.kind === "nix-missing" ? (
               <>
@@ -207,12 +249,27 @@ export function RepairBanners({
               </>
             ) : issue.kind === "helper-inactive" ? (
               <>
-                <p className="font-medium">Unattended sync helper is not active</p>
+                <p className="font-medium">
+                  {issue.phase === "approvalRequired"
+                    ? "Finish enabling unattended sync"
+                    : issue.phase === "reconciling"
+                      ? "Finishing unattended sync setup…"
+                      : issue.phase === "waitingForActivation"
+                        ? "Waiting for the current build or restore to finish"
+                        : issue.phase === "needsUserAction"
+                          ? "Unattended sync needs your attention"
+                          : "Couldn’t finish enabling unattended sync"}
+                </p>
                 {/* The row's sentences quote unbreakable `/Volumes/…` paths
                     wider than the banner, so they must be allowed to break
                     anywhere. */}
                 {issue.instructions ? (
                   <p className="mt-0.5 wrap-anywhere text-xs opacity-70">{issue.instructions}</p>
+                ) : null}
+                {helperError !== null && helperError.phase === issue.phase ? (
+                  <p role="alert" className="mt-1 wrap-anywhere text-xs">
+                    {helperError.message}
+                  </p>
                 ) : null}
               </>
             ) : null}
@@ -234,7 +291,22 @@ export function RepairBanners({
                 </Button>
               </>
             )}
-            {issue.kind === "helper-inactive" && <HelperGrantButton />}
+            {issue.kind === "helper-inactive" && issue.phase === "approvalRequired" ? (
+              <HelperActionButton
+                action="approval"
+                onRecheck={onRecheck}
+                episode={currentEpisode}
+                onError={(episode, message) => reportHelperError(episode, issue.phase, message)}
+              />
+            ) : null}
+            {issue.kind === "helper-inactive" && issue.phase === "failed" ? (
+              <HelperActionButton
+                action="retry"
+                onRecheck={onRecheck}
+                episode={currentEpisode}
+                onError={(episode, message) => reportHelperError(episode, issue.phase, message)}
+              />
+            ) : null}
             <button
               type="button"
               onClick={() => onDismiss(issue.kind)}
