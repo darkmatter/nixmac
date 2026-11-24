@@ -1,9 +1,9 @@
 //! Secrets management procedures.
 
 use super::{OrpcCtx, helpers::internal_err};
-use crate::commands::helpers::get_hostname_and_config_dir;
 use crate::shared_types::SecretsVaultState;
 use crate::state::secrets_vault;
+use crate::{commands::helpers::get_hostname_and_config_dir, shared_types::SecretBackend};
 use orpc::*;
 use serde::{Deserialize, Serialize};
 use specta::Type;
@@ -12,6 +12,7 @@ use specta::Type;
 #[serde(rename_all = "camelCase")]
 struct DecryptSecretInput {
     secret_id: String,
+    backend: SecretBackend,
 }
 
 /// Returns the backend-owned secrets vault snapshot.
@@ -32,13 +33,18 @@ async fn decrypt_secret(ctx: OrpcCtx, input: DecryptSecretInput) -> Result<Strin
     let (host_attr, config_dir) = get_hostname_and_config_dir(&ctx.app, "secrets.decryptSecret")
         .map_err(|error| internal_err("secrets.decryptSecret", error))?;
 
-    crate::secrets::secrets_management::decrypt_secret(&host_attr, &config_dir, &input.secret_id)
-        .map_err(|error| {
-            internal_err(
-                "secrets.decryptSecret",
-                format!("Failed to decrypt secret: {error}"),
-            )
-        })
+    crate::secrets::secrets_management::decrypt_secret(
+        &host_attr,
+        &config_dir,
+        &input.secret_id,
+        input.backend,
+    )
+    .map_err(|error| {
+        internal_err(
+            "secrets.decryptSecret",
+            format!("Failed to decrypt secret: {error}"),
+        )
+    })
 }
 
 pub fn routes() -> Router<OrpcCtx> {

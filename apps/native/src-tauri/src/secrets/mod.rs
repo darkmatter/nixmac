@@ -5,6 +5,20 @@ pub mod secrets_management;
 use crate::evolve::file_ops::resolve_existing_path_in_dir;
 use std::path::{Path, PathBuf};
 
+/// Convert a failed subprocess result into a caller-supplied, safe error.
+///
+/// Commands in this module can receive private identity material, and some of
+/// them may repeat that input on stderr. Keep all such output out of errors
+/// returned to the UI or subsequently written to logs.
+fn sanitized_subprocess_error(safe_error: &'static str, _output: &std::process::Output) -> String {
+    safe_error.to_string()
+}
+
+/// Whether the current process can open a file for reading.
+fn is_readable_file(path: impl AsRef<Path>) -> bool {
+    std::fs::File::open(path).is_ok()
+}
+
 /// Resolve relative declarations from the same directory used as the SOPS
 /// command's working directory. Nix path values commonly evaluate to absolute
 /// paths (including `/nix/store` paths), so those must remain supported.

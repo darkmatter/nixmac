@@ -349,7 +349,7 @@ displayName: string;
  */
 description?: string | null; fields: ConfigFieldSchema[] }
 
-export type DecryptSecretInput = { secretId: string }
+export type DecryptSecretInput = { secretId: string; backend: SecretBackend }
 
 /**
  * Whether decryption is available for this specific process or not via its private identity.
