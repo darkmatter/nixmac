@@ -1,0 +1,25 @@
+name: Story coverage
+
+on:
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: story-coverage-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  coverage:
+    name: Story coverage
+    runs-on: arc
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+      # Complements storybook.yaml's preview and render/snapshot tests.
+      - uses: darkmatter/standards/actions/story-coverage@afe302085b328bd9e58063d3a3d5b82e436a76d5
+        with:
+          base: ${{ github.event.pull_request.base.sha }}
