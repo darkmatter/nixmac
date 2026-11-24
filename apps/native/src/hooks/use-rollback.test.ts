@@ -20,6 +20,7 @@ vi.mock("@/lib/orpc", () => ({
 }));
 
 vi.mock("@/hooks/use-rebuild-stream", () => ({
+  clearRebuildRetry: vi.fn<() => void>(),
   useRebuildStream: () => ({
     triggerRebuild: mocks.triggerRebuild,
   }),
@@ -96,6 +97,32 @@ describe("useRollback", () => {
     const onSuccess = mocks.triggerRebuild.mock.calls[0][0].onSuccess as () => Promise<void>;
     await act(async () => {
       await onSuccess();
+    });
+
+    expect(mocks.finalizeRollback).toHaveBeenCalledWith({
+      storePath: "/nix/store/old-system",
+      changesetId: 1,
+    });
+  });
+
+  it("registers a retry that reuses the erased target and finalization callback", async () => {
+    const { result } = renderHook(() => useRollback());
+
+    await act(async () => {
+      await result.current.handleRollback();
+    });
+
+    const firstOptions = mocks.triggerRebuild.mock.calls[0][0];
+    await act(async () => {
+      await firstOptions.retry();
+    });
+
+    expect(mocks.triggerRebuild).toHaveBeenCalledTimes(2);
+    const retryOptions = mocks.triggerRebuild.mock.calls[1][0];
+    expect(retryOptions.storePath).toBe("/nix/store/old-system");
+
+    await act(async () => {
+      await retryOptions.onSuccess();
     });
 
     expect(mocks.finalizeRollback).toHaveBeenCalledWith({
