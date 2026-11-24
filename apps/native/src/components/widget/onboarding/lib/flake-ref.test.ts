@@ -125,4 +125,34 @@ describe("parseFlakeRef", () => {
 			importable: false,
 		});
 	});
+
+	// The backend parser rejects these. Reading the last two segments instead
+	// would show owner/repo/subdir as the repository repo/subdir.
+	it.each([
+		"owner/repo/subdir",
+		"owner/repo/hosts/work?ref=main",
+		"github.com/owner/repo/subdir",
+		"www.github.com/owner/repo/tree/main",
+		"https://github.com/owner/repo/tree/main",
+		"https://github.com/owner/repo/tree/main?dir=hosts/work",
+		"ssh://git@GitHub.com/owner/repo/extra.git",
+		"git@github.com:owner/repo/tree/main.git",
+	])("rejects GitHub locator %s with segments beyond owner/repo", (input) => {
+		const result = parseFlakeRef(input);
+		expect(result).toMatchObject({ valid: false, importable: false });
+		expect(result.hint).toContain("?ref=");
+		expect(result.hint).toContain("?dir=");
+	});
+
+	it("keeps nested repository paths on other git hosts", () => {
+		// Hosts like GitLab nest repositories under subgroups, so only GitHub
+		// locators are held to exactly owner/repo.
+		expect(
+			parseFlakeRef("https://gitlab.com/group/subgroup/repo.git?ref=main"),
+		).toMatchObject({ valid: true, importable: true, type: "repo" });
+
+		expect(parseFlakeRef("git@gitlab.com:group/subgroup/repo.git")).toMatchObject(
+			{ valid: true, importable: true, type: "repo" },
+		);
+	});
 });
