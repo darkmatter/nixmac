@@ -60,7 +60,18 @@ jobs:
           EDITOR: ${{ github.event.sender.login }}
         run: |
           set -euo pipefail
-          permission=$(gh api "repos/${REPO}/collaborators/${EDITOR}/permission" --jq '.permission' 2>/dev/null || echo none)
+          # Only a 404 (no such user) means "none". Any other API failure
+          # (403, rate limit, 5xx) stops with the real error so it is
+          # actionable instead of reading as missing access.
+          api_error="${RUNNER_TEMP:-/tmp}/editor-permission-error.txt"
+          if permission=$(gh api "repos/${REPO}/collaborators/${EDITOR}/permission" --jq '.permission' 2>"$api_error"); then
+            :
+          elif grep -q '(HTTP 404)' "$api_error"; then
+            permission=none
+          else
+            echo "::error::Could not read ${EDITOR}'s permission on ${REPO}: $(tr '\n' ' ' < "$api_error")"
+            exit 1
+          fi
           case "$permission" in
             admin|maintain|write) ;;
             *)
