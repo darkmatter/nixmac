@@ -12,9 +12,8 @@ concurrency:
 jobs:
   storybook-tests:
     name: Storybook Snapshot Tests
-    runs-on: arc
-    # ARC runner pods are ephemeral: every run bootstraps Nix + the devenv
-    # profile from caches, which alone can exceed the old 25m budget.
+    runs-on: ${{ (github.event_name != 'pull_request' || (github.event.pull_request.head.repo.full_name == github.repository && github.actor != 'dependabot[bot]')) && 'arc' || 'ubuntu-24.04' }}
+    # Ephemeral runners bootstrap Nix and the devenv profile on every run.
     timeout-minutes: 60
     permissions:
       contents: read
@@ -22,28 +21,21 @@ jobs:
       issues: write
       pull-requests: write
     steps:
-      - name: Mint darkmatter[bot] token
-        id: bot-token
-        uses: actions/create-github-app-token@v2
-        with:
-          app-id: ${{ secrets.DARKMATTER_APP_ID }}
-          private-key: ${{ secrets.DARKMATTER_APP_PRIVATE_KEY }}
-
       - name: Checkout code
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
-          token: ${{ steps.bot-token.outputs.token }}
+          persist-credentials: false
 
       - name: Setup Nix and caches
         uses: ./.github/actions/setup-nix
         with:
-          darkmatter-cachix-auth-token: ${{ secrets.DARKMATTER_CACHIX_AUTH_TOKEN }}
+          darkmatter-cachix-auth-token: ${{ (github.event_name != 'pull_request' || (github.event.pull_request.head.repo.full_name == github.repository && github.actor != 'dependabot[bot]')) && secrets.DARKMATTER_CACHIX_AUTH_TOKEN || '' }}
 
       - name: Setup devenv profile
         uses: ./.github/actions/setup-devenv
         with:
-          darkmatter-cachix-auth-token: ${{ secrets.DARKMATTER_CACHIX_AUTH_TOKEN }}
+          darkmatter-cachix-auth-token: ${{ (github.event_name != 'pull_request' || (github.event.pull_request.head.repo.full_name == github.repository && github.actor != 'dependabot[bot]')) && secrets.DARKMATTER_CACHIX_AUTH_TOKEN || '' }}
 
       - name: Setup Bun
         uses: ./.github/actions/setup-bun
@@ -52,6 +44,7 @@ jobs:
         run: bun install --frozen-lockfile
 
       - name: Resolve secrets
+        if: github.event_name != 'pull_request' || (github.event.pull_request.head.repo.full_name == github.repository && github.actor != 'dependabot[bot]')
         env:
           SOPS_AGE_KEY: ${{ secrets.SOPS_AGE_KEY }}
         run: |
@@ -96,12 +89,14 @@ jobs:
           STORYBOOK_URL=http://127.0.0.1:6100 node scripts/check-storybook-fonts.mjs
 
       - name: Create Cloudflare Pages project (if needed)
+        if: github.event_name != 'pull_request' || (github.event.pull_request.head.repo.full_name == github.repository && github.actor != 'dependabot[bot]')
         env:
           CLOUDFLARE_API_TOKEN: ${{ env.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ env.CLOUDFLARE_ACCOUNT_ID }}
         run: bunx wrangler pages project create nixmac-storybook --production-branch=main 2>/dev/null || true
 
       - name: Deploy to Cloudflare Pages
+        if: github.event_name != 'pull_request' || (github.event.pull_request.head.repo.full_name == github.repository && github.actor != 'dependabot[bot]')
         id: deploy
         env:
           CLOUDFLARE_API_TOKEN: ${{ env.CLOUDFLARE_API_TOKEN }}
@@ -124,13 +119,21 @@ jobs:
       # Story-level digest of new/changed/removed stories vs the PR base,
       # rendered into the sticky comment so reviewers can see what changed.
       - name: Build story-change digest
-        if: github.event_name == 'pull_request'
+        if: github.event_name == 'pull_request' && steps.deploy.outputs.deployment-url != ''
         continue-on-error: true
         working-directory: apps/native
         env:
           BASE_REF: origin/${{ github.base_ref }}
           DEPLOY_URL: ${{ steps.deploy.outputs.deployment-url }}
         run: node scripts/build-storybook-digest.mjs
+
+      - name: Mint darkmatter[bot] token
+        if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository && github.actor != 'dependabot[bot]' && steps.deploy.outputs.deployment-url != ''
+        id: bot-token
+        uses: actions/create-github-app-token@v2
+        with:
+          app-id: ${{ secrets.DARKMATTER_APP_ID }}
+          private-key: ${{ secrets.DARKMATTER_APP_PRIVATE_KEY }}
 
       - name: Publish Storybook deployment link
         if: steps.deploy.outputs.deployment-url != ''
@@ -166,7 +169,7 @@ jobs:
           EOF
 
       - name: Comment Storybook preview URL on PR
-        if: always() && !cancelled() && github.event_name == 'pull_request' && steps.deploy.outputs.deployment-url != ''
+        if: always() && !cancelled() && steps.bot-token.outcome == 'success'
         env:
           GH_TOKEN: ${{ steps.bot-token.outputs.token }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
@@ -338,7 +341,7 @@ jobs:
         if: always() && !cancelled() && steps.snapshot_tests.outcome == 'failure'
         working-directory: apps/native
         run: |
-          echo "::warning::Storybook snapshots drifted — review the screenshot gallery in the PR comment and accept if intentional."
+          echo "::warning::Storybook snapshots drifted — review the storybook-snapshot-diffs artifact and accept if intentional."
 
       - name: Upload snapshot diffs on drift
         if: always() && !cancelled() && steps.snapshot_tests.outcome == 'failure'
@@ -352,15 +355,16 @@ jobs:
 
       - name: Post summary
         if: always()
+        env:
+          DEPLOY_URL: ${{ steps.deploy.outputs.deployment-url }}
+          SNAPSHOT_OUTCOME: ${{ steps.snapshot_tests.outcome }}
         run: |
           echo "### Storybook Snapshot Tests" >> "$GITHUB_STEP_SUMMARY"
-          DEPLOY_URL="${{ steps.deploy.outputs.deployment-url }}"
           if [ -n "$DEPLOY_URL" ]; then
             echo "[Open Storybook preview]($DEPLOY_URL)" >> "$GITHUB_STEP_SUMMARY"
           fi
-          if [ "${{ steps.snapshot_tests.outcome }}" == "success" ]; then
-            echo "✅ All Storybook snapshot tests passed" >> "$GITHUB_STEP_SUMMARY"
-          else
-            echo "⚠️ Storybook snapshots drifted — review the PR comment gallery and accept if intentional." >> "$GITHUB_STEP_SUMMARY"
-            echo "Check the 'storybook-snapshot-diffs' artifact for visual diffs." >> "$GITHUB_STEP_SUMMARY"
-          fi
+          case "$SNAPSHOT_OUTCOME" in
+            success) echo "✅ All Storybook snapshot tests passed" >> "$GITHUB_STEP_SUMMARY" ;;
+            failure) echo "⚠️ Storybook snapshots drifted — check the 'storybook-snapshot-diffs' artifact." >> "$GITHUB_STEP_SUMMARY" ;;
+            *) echo "Storybook snapshot tests did not run." >> "$GITHUB_STEP_SUMMARY" ;;
+          esac

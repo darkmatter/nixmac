@@ -121,6 +121,8 @@ cargo clippy --workspace --all-targets --features nixmac/codegen -- -D warnings
 
 CI runs the git hooks against all files (treefmt must produce no changes), clippy with `-D warnings`, oxlint, and the unit test suites. The workspace denies `unused` and `clippy::all` — an unused import is a hard error, not a warning.
 
+Fork PRs and PR runs triggered by Dependabot build an unsigned macOS app and run Storybook snapshots on GitHub-hosted runners. They do not publish signed app artifacts or a Storybook preview. If snapshots drift, download the `storybook-snapshot-diffs` artifact from the workflow run.
+
 ## Code generation
 
 If you change Rust types shared with the frontend (`#[specta::Type]` structs, Tauri commands, oRPC procedures), regenerate the bindings from `apps/native`:
