@@ -38,6 +38,7 @@ jobs:
     outputs:
       sha: ${{ steps.source.outputs.sha }}
       authorized: ${{ steps.membership.outputs.authorized }}
+      trusted: ${{ github.event_name != 'pull_request' || (github.event.pull_request.head.repo.full_name == github.repository && github.actor != 'dependabot[bot]') }}
     steps:
       - name: Validate exact build request
         id: source
@@ -241,9 +242,11 @@ jobs:
   build:
     needs: [source, rust-tests]
     if: github.event_name != 'workflow_dispatch' || (github.run_attempt == 1 && !inputs.authorize_only && needs.source.outputs.authorized == 'true')
-    runs-on: [self-hosted, macOS, ARM64]
+    # Route PR checks without signing credentials to a hosted runner. GitHub's
+    # external PR approval and runner-access policies still apply.
+    runs-on: ${{ fromJSON(needs.source.outputs.trusted == 'true' && '["self-hosted","macOS","ARM64"]' || '["macos-15"]') }}
     env:
-      SOPS_AGE_KEY: ${{ secrets.SOPS_AGE_KEY }}
+      SOPS_AGE_KEY: ${{ needs.source.outputs.trusted == 'true' && secrets.SOPS_AGE_KEY || '' }}
     permissions:
       contents: write
     steps:
@@ -252,7 +255,7 @@ jobs:
         with:
           ref: ${{ needs.source.outputs.sha }}
           fetch-depth: 0
-          persist-credentials: true
+          persist-credentials: ${{ needs.source.outputs.trusted == 'true' }}
           clean: false
 
       - name: Clean workspace while preserving CI caches
@@ -275,12 +278,12 @@ jobs:
       - name: Setup Nix and caches
         uses: ./.github/actions/setup-nix
         with:
-          darkmatter-cachix-auth-token: ${{ secrets.DARKMATTER_CACHIX_AUTH_TOKEN }}
+          darkmatter-cachix-auth-token: ${{ needs.source.outputs.trusted == 'true' && secrets.DARKMATTER_CACHIX_AUTH_TOKEN || '' }}
 
       - name: Setup devenv profile
         uses: ./.github/actions/setup-devenv
         with:
-          darkmatter-cachix-auth-token: ${{ secrets.DARKMATTER_CACHIX_AUTH_TOKEN }}
+          darkmatter-cachix-auth-token: ${{ needs.source.outputs.trusted == 'true' && secrets.DARKMATTER_CACHIX_AUTH_TOKEN || '' }}
 
       # Release-script tests (signing, install-name normalization, DMG
       # portability). Nothing else executes these test harnesses, so without
@@ -418,6 +421,7 @@ jobs:
         # only that child process so old source revisions receive the right SHA.
         run: env GITHUB_SHA="$NIXMAC_SOURCE_SHA" bash ops/scripts/release/sync-version.sh
       - name: Check for code signing secrets
+        if: needs.source.outputs.trusted == 'true'
         id: check-secrets
         shell: 'sops exec-env ops/secrets/secrets.sops.json "bash -e {0}"'
         run: |
@@ -436,6 +440,7 @@ jobs:
       # Running `security list-keychain -d user -s <keychain>` before the build
       # replaces the keychain search list and breaks DMG bundling on tag runs.
       - name: Build Tauri app
+        if: needs.source.outputs.trusted == 'true'
         run: |
           # unset the certificate and password so the runner can't influence the build
           export APPLE_SIGNING_IDENTITY="-"
@@ -453,6 +458,17 @@ jobs:
           NIXMAC_VERSION: ${{ steps.sync-version.outputs.build_version }}
           VITE_SERVER_URL: ${{ secrets.VITE_SERVER_URL }}
           SUBMITTED_FEEDBACK_DSN: ${{ secrets.SUBMITTED_FEEDBACK_DSN }}
+
+      # The production config creates updater artifacts that require a private key.
+      # A fork check only needs the app bundle, without a signing identity or updater.
+      - name: Build unsigned Tauri app
+        if: needs.source.outputs.trusted != 'true'
+        working-directory: apps/native
+        run: bun run desktop:build --bundles app --no-sign --config '{"bundle":{"createUpdaterArtifacts":false}}'
+        env:
+          NIXMAC_ENV: production
+          NIXMAC_BUILD_ID: ${{ steps.source.outputs.sha }}
+          NIXMAC_VERSION: ${{ steps.sync-version.outputs.build_version }}
 
       # An unset NIXMAC_ENV selects the development profile, which turns the
       # permissions gate off. Check the artifacts themselves name production,
@@ -509,10 +525,11 @@ jobs:
       # The normalizer needs this keychain to re-sign updater archives after
       # install-name rewrites mutate the embedded app bundle.
       - name: Import Apple Developer certificate
-        if: steps.check-secrets.outputs.has_certificate == 'true'
+        if: needs.source.outputs.trusted == 'true' && steps.check-secrets.outputs.has_certificate == 'true'
         shell: 'sops exec-env ops/secrets/secrets.sops.json "bash -e {0}"'
         run: bash ops/scripts/release/import-certificate.sh
       - name: Normalize macOS system install names
+        if: needs.source.outputs.trusted == 'true'
         shell: 'sops exec-env ops/secrets/secrets.sops.json "bash -e {0}"'
         run: |
           set -euo pipefail
@@ -530,6 +547,7 @@ jobs:
 
       # Sign the app bundle (required for notarization)
       - name: Sign app bundle
+        if: needs.source.outputs.trusted == 'true'
         run: bash ops/scripts/release/sign-app.sh
       # Install deterministic Finder metadata into the DMG. Tauri copies
       # .background/dmg-background.png, but our CI hosts do not reliably emit
@@ -537,16 +555,18 @@ jobs:
       # The script mount-verifies .DS_Store, .background, Applications link,
       # and the signed app before notarization/upload.
       - name: Install DMG Finder layout metadata
-        if: steps.check-secrets.outputs.has_certificate == 'true'
+        if: needs.source.outputs.trusted == 'true' && steps.check-secrets.outputs.has_certificate == 'true'
         run: |
           APP_PATH=$(find target/release/bundle/macos -name "*.app" -type d 2>/dev/null | sed -n '1p' || true)
           DMG_PATH=$(find target/release/bundle/dmg -name "*.dmg" -type f 2>/dev/null | sed -n '1p' || true)
           bash ops/scripts/release/rebuild-dmg-with-layout.sh "$APP_PATH" "$DMG_PATH"
       # Notarize the app (requires Apple Developer account)
       - name: Notarize app
+        if: needs.source.outputs.trusted == 'true'
         shell: 'sops exec-env ops/secrets/secrets.sops.json "bash -e {0}"'
         run: bash ops/scripts/release/notarize.sh
       - name: Check macOS app portability
+        if: needs.source.outputs.trusted == 'true'
         shell: bash
         run: |
           set -euo pipefail
@@ -563,6 +583,7 @@ jobs:
           bash ops/scripts/release/check-portable-macos-app.sh "$APP_PATH" "$DMG_PATH" "$TAR_GZ_PATH"
       - name: Get artifact paths
         id: artifacts
+        if: needs.source.outputs.trusted == 'true'
         run: |
           DMG_PATH=$(find target/release/bundle/dmg -name "*.dmg" -type f 2>/dev/null | head -1 || echo "")
           APP_PATH=$(find target/release/bundle/macos -name "*.app" -type d 2>/dev/null | head -1 || echo "")
@@ -576,6 +597,7 @@ jobs:
             echo "dmg_name=$(basename "$DMG_PATH")" >> "$GITHUB_OUTPUT"
           fi
       - name: Write exact build provenance
+        if: needs.source.outputs.trusted == 'true'
         shell: python3 {0}
         env:
           NIXMAC_SOURCE_SHA: ${{ steps.source.outputs.sha }}
@@ -637,6 +659,7 @@ jobs:
           output = dmgs[0].parent / "nixmac-build-provenance.json"
           output.write_text(json.dumps(provenance, indent=2) + "\n")
       - name: Upload DMG artifact
+        if: needs.source.outputs.trusted == 'true'
         uses: actions/upload-artifact@v7
         with:
           name: nixmac-macos-dmg
@@ -645,6 +668,7 @@ jobs:
             target/release/bundle/dmg/nixmac-build-provenance.json
           if-no-files-found: error
       - name: Upload app bundle artifact
+        if: needs.source.outputs.trusted == 'true'
         uses: actions/upload-artifact@v7
         with:
           name: nixmac-macos-app
@@ -698,5 +722,5 @@ jobs:
           version: ${{ steps.release-version.outputs.version }}
           name: nixmac v${{ steps.release-version.outputs.version }}
       - name: Cleanup keychain
-        if: always()
+        if: always() && needs.source.outputs.trusted == 'true'
         run: bash ops/scripts/release/cleanup-keychain.sh

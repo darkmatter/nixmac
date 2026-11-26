@@ -6,7 +6,7 @@ REPO_ROOT="$(cd "$SCRIPT_DIR/../../.." && pwd)"
 
 # Execute the actual workflow-owned permission check with a mocked HTTP
 # boundary. This test never creates a token or contacts GitHub.
-python3 - "$REPO_ROOT/.github/workflows/build.yaml" <<'PY'
+python3 - "$REPO_ROOT/.github/workflows/build.yaml" "$REPO_ROOT/.github/workflows/storybook.yaml" <<'PY'
 import contextlib
 import io
 import json
@@ -110,11 +110,23 @@ with tempfile.TemporaryDirectory() as directory:
         run({"alice": member("alice"), "bob": invalid})
     run({"alice": member("alice", "pending"), "bob": member("bob")})
 
+def evaluate(expression, context):
+    expression = expression.strip().removeprefix("${{").removesuffix("}}").strip()
+    for key, value in context.items():
+        expression = expression.replace(key, repr(value))
+    expression = expression.replace("&&", " and ").replace("||", " or ")
+    expression = re.sub(r"!(?!=)", "not ", expression).strip()
+    return eval(expression, {"__builtins__": {}, "fromJSON": json.loads, "always": lambda: True})
+
+def expression_in(block, key, default=None):
+    match = re.search(r"^ +" + key + r": (.+)$", block, re.MULTILINE)
+    return match[1] if match else default
+
 # Evaluate each private job's actual expression across the observable
 # scheduling cases, including selective reruns that reuse cached outputs.
 for job in ["git-hooks", "rust-tests", "build"]:
     block = re.search(r"^  " + job + r":\n(.*?)(?=^  [a-z][a-z0-9-]*:|\Z)", workflow, re.MULTILINE | re.DOTALL).group(1)
-    expression = re.search(r"^    if: (.+)$", block, re.MULTILINE).group(1)
+    expression = expression_in(block, "if")
     for event, attempt, authorize_only, authorized, expected in [
         ("workflow_dispatch", 1, False, "true", True),
         ("workflow_dispatch", 1, False, "", False),
@@ -125,10 +137,68 @@ for job in ["git-hooks", "rust-tests", "build"]:
         ("pull_request", 2, False, "", True),
         ("merge_group", 1, False, "", True),
     ]:
-        python = expression.replace("github.event_name", repr(event)).replace("github.run_attempt", str(attempt))
-        python = python.replace("inputs.authorize_only", repr(authorize_only)).replace("needs.source.outputs.authorized", repr(authorized))
-        python = python.replace("&&", " and ").replace("||", " or ")
-        python = re.sub(r"!(?!=)", "not ", python)
-        assert eval(python, {"__builtins__": {}}) == expected, (job, event, attempt, authorize_only, authorized)
+        context = {
+            "github.event_name": event,
+            "github.run_attempt": attempt,
+            "inputs.authorize_only": authorize_only,
+            "needs.source.outputs.authorized": authorized,
+        }
+        assert evaluate(expression, context) == expected, (job, event, attempt, authorize_only, authorized)
 print("workflow membership admission and private-job scheduling tests passed")
+
+# Exercise the workflow expressions with the event payloads GitHub supplies.
+# A fork must get the check steps even though it cannot receive signing or
+# deployment credentials; trusted events must keep their existing paths.
+def step_enabled(job, name, context):
+    block = re.split(r"\n      - name: ", job.split(f"\n      - name: {name}\n", 1)[1], maxsplit=1)[0]
+    return bool(evaluate(expression_in(block, "if", "True"), context))
+
+mac = workflow.split("\n  build:\n", 1)[1]
+storybook = Path(sys.argv[2]).read_text()
+for event, head, actor, triggering_actor, trusted in [
+    ("pull_request", "contributor/nixmac", "contributor", "contributor", False),
+    ("pull_request", "darkmatter/nixmac", "dependabot[bot]", "dependabot[bot]", False),
+    ("pull_request", "darkmatter/nixmac", "dependabot[bot]", "maintainer", False),
+    ("pull_request", "darkmatter/nixmac", "maintainer", "maintainer", True),
+    ("push", "", "maintainer", "maintainer", True),
+    ("merge_group", "", "maintainer", "maintainer", True),
+    ("workflow_dispatch", "", "maintainer", "maintainer", True),
+]:
+    context = {
+        "github.actor": actor,
+        "github.triggering_actor": triggering_actor,
+        "github.event_name": event,
+        "github.event.pull_request.head.repo.full_name": head,
+        "github.repository": "darkmatter/nixmac",
+    }
+    assert evaluate(expression_in(workflow, "trusted"), context) == trusted, event
+    context.update({
+        "needs.source.outputs.trusted": str(trusted).lower(),
+        "secrets.SOPS_AGE_KEY": "fixture-signing-key",
+        "steps.check-secrets.outputs.has_certificate": "true",
+    })
+    assert evaluate(expression_in(mac, "runs-on"), context) == (
+        ["self-hosted", "macOS", "ARM64"] if trusted else ["macos-15"]
+    ), event
+    assert bool(evaluate(expression_in(mac, "SOPS_AGE_KEY"), context)) == trusted, event
+    for step_name in [
+        "Check for code signing secrets", "Build Tauri app", "Import Apple Developer certificate",
+        "Normalize macOS system install names", "Sign app bundle", "Install DMG Finder layout metadata",
+        "Notarize app", "Check macOS app portability", "Write exact build provenance",
+        "Upload DMG artifact", "Upload app bundle artifact", "Cleanup keychain",
+    ]:
+        assert step_enabled(mac, step_name, context) == trusted, (event, head, step_name)
+    assert step_enabled(mac, "Build unsigned Tauri app", context) != trusted, event
+    assert step_enabled(mac, "Verify artifacts carry the production profile", context), event
+    assert step_enabled(mac, "Unit Test frontend", context), event
+
+    if event in ("pull_request", "push"):
+        context["steps.deploy.outputs.deployment-url"] = "https://fixture.pages.dev" if trusted else ""
+        assert evaluate(expression_in(storybook, "runs-on"), context) == ("arc" if trusted else "ubuntu-24.04")
+        for step_name in ["Resolve secrets", "Create Cloudflare Pages project (if needed)",
+                          "Deploy to Cloudflare Pages", "Publish Storybook deployment link"]:
+            assert step_enabled(storybook, step_name, context) == trusted, (event, head, step_name)
+        assert step_enabled(storybook, "Mint darkmatter[bot] token", context) == (trusted and event == "pull_request")
+        assert step_enabled(storybook, "Run Storybook snapshot tests", context), event
+print("fork, Dependabot, and trusted workflow scheduling tests passed")
 PY
